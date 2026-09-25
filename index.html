@@ -241,304 +241,157 @@ const SHAPES = {
 const COLORS = [null, '#00ffff', '#0000ff', '#ffa500', '#ffff00', '#00ff00', '#800080', '#ff0000'];
 
 // ==========================================
-// 💡 最強の隣接エッジ抽出エンジン
+// 💡 全体をみた上で、赤エリアの指定段に存在する同色エッジをカウントする究極のロジック
 // ==========================================
-// お客様のロジック通り、赤エリア1段なら横20本/縦9本、赤エリア2段なら横30本/縦18本 を正確に抽出します
-function getAdjacency(b, startY, endY) {
-  // 縦棒 (x方向に隣接する同色ブロックの境界)
-  let vBars = []; 
+// maxX: 判定対象の最大Xインデックス (通常は9, EXステージの右1マス除外なら8)
+function countColorEdges(b, startY, endY, color, maxX = 9) {
+  let v = 0; // 縦エッジ (左右の隣接)
   for (let y = startY; y <= endY; y++) {
-    let v = [];
-    for (let x = 0; x < 9; x++) {
-      v.push((b[y][x].color !== 0 && b[y][x].color === b[y][x+1].color) ? 1 : 0);
+    for (let x = 0; x < maxX; x++) {
+      if (b[y][x].color === color && b[y][x+1].color === color) {
+        v++;
+      }
     }
-    vBars.push(v);
   }
 
-  // 横棒 (y方向に隣接する同色ブロックの境界。上下の外周含む)
-  let hBars = []; 
+  let h = 0; // 横エッジ (上下の隣接。全体を見て赤エリアの境界を跨ぐものもカウント)
   for (let y = startY; y <= endY + 1; y++) {
-    let h = [];
-    for (let x = 0; x < 10; x++) {
+    for (let x = 0; x <= maxX; x++) {
       let c1 = (y - 1 >= 0) ? b[y-1][x].color : 0;
       let c2 = (y < 20) ? b[y][x].color : 0;
-      h.push((c1 !== 0 && c1 === c2) ? 1 : 0);
-    }
-    hBars.push(h);
-  }
-  return { vBars, hBars };
-}
-
-// シルエット判定用
-function extractSilhouette(b) {
-  let minX = 10, maxX = -1, minY = 20, maxY = -1;
-  for (let y = 0; y < 20; y++) {
-    for (let x = 0; x < 10; x++) {
-      if (b[y][x].color !== 0) {
-        minX = Math.min(minX, x);
-        maxX = Math.max(maxX, x);
-        minY = Math.min(minY, y);
-        maxY = Math.max(maxY, y);
+      if (c1 === color && c2 === color) {
+        h++;
       }
     }
   }
-  if (maxX === -1) return null; 
-  
-  let silhouette = [];
-  for (let y = minY; y <= maxY; y++) {
-    let row = [];
-    for (let x = minX; x <= maxX; x++) {
-      row.push(b[y][x].color !== 0 ? 1 : 0);
-    }
-    silhouette.push(row);
-  }
-  return silhouette;
+  return { v, h };
 }
 
-function checkMatch(extracted, targetPatterns) {
-  if (!extracted) return false;
-  for (let pattern of targetPatterns) {
-    if (extracted.length !== pattern.length) continue;
-    if (extracted[0].length !== pattern[0].length) continue;
-    
-    let isMatch = true;
-    for (let y = 0; y < extracted.length; y++) {
-      for (let x = 0; x < extracted[y].length; x++) {
-        if (extracted[y][x] !== pattern[y][x]) {
-          isMatch = false;
-          break;
-        }
-      }
-      if (!isMatch) break;
-    }
-    if (isMatch) return true;
-  }
-  return false;
-}
-
-// ------------------------------------------
-// 🧩 ステージ3・4専用の明確なルール判定関数
-// ------------------------------------------
-function checkColaStage(b, targetRows) {
-  let minRow = Math.min(...targetRows);
-  let maxRow = Math.max(...targetRows);
-  let startY = 20 - maxRow;
-  let endY = 20 - minRow;
-
-  let tBlocks = []; // T: color 6 (紫)
-  let jBlocks = []; // J: color 2 (青)
-  let lBlocks = []; // L: color 3 (橙)
-
+// 順序判定用: 指定された色の最小X座標を取得する
+function getMinX(b, startY, endY, color) {
+  let minX = 10;
   for (let y = startY; y <= endY; y++) {
     for (let x = 0; x < 10; x++) {
-      if (b[y][x].color === 6) tBlocks.push({x, y});
-      if (b[y][x].color === 2) jBlocks.push({x, y});
-      if (b[y][x].color === 3) lBlocks.push({x, y});
+      if (b[y][x].color === color) minX = Math.min(minX, x);
     }
   }
-
-  // ② Jの色 横1マス
-  if (jBlocks.length !== 1) return false;
-  let jX = jBlocks[0].x;
-
-  // 「横2縦1 (縦は横より右)」かどうかを検証する内部関数
-  function checkShape(blocks) {
-    if (blocks.length !== 3) return false; // エリア内に合計3マスであること
-    let top = blocks.filter(blk => blk.y === startY);
-    let bot = blocks.filter(blk => blk.y === endY);
-    
-    let horizRow, vertRow;
-    if (top.length === 2 && bot.length === 1) {
-      horizRow = top; vertRow = bot;
-    } else if (top.length === 1 && bot.length === 2) {
-      horizRow = bot; vertRow = top;
-    } else {
-      return false;
-    }
-
-    // 横2マスが隣接しているか
-    if (Math.abs(horizRow[0].x - horizRow[1].x) !== 1) return false;
-    
-    // 縦1マスのX座標が、横2マスの右側のX座標と一致しているか
-    let rightX = Math.max(horizRow[0].x, horizRow[1].x);
-    if (vertRow[0].x !== rightX) return false;
-
-    return { minX: Math.min(...blocks.map(blk => blk.x)) };
-  }
-
-  // ① Tの色 横2縦1 (縦は横より右)
-  let tShape = checkShape(tBlocks);
-  if (!tShape) return false;
-
-  // ③ Lの色 横2縦1 (縦は横より右)
-  let lShape = checkShape(lBlocks);
-  if (!lShape) return false;
-
-  // 左から ①T, ②J, ③L の順に存在する (隙間は無視)
-  if (!(tShape.minX < jX && jX < lShape.minX)) return false;
-
-  return true;
+  return minX;
 }
 
 // ------------------------------------------
-// 🧩 各ステージの判定定義
+// 🧩 各ステージの判定ロジック (全ステージをエッジカウントで統一)
 // ------------------------------------------
-function getPieceStats(b) {
-  let pieces = {};
-  for (let y = 0; y < 20; y++) {
-    for (let x = 0; x < 10; x++) {
-      let cell = b[y][x];
-      if (cell.id > 0) {
-        if (!pieces[cell.id]) {
-          pieces[cell.id] = { minX: x, maxX: x, minY: y, maxY: y, count: 0, color: cell.color };
-        }
-        let p = pieces[cell.id];
-        p.minX = Math.min(p.minX, x);
-        p.maxX = Math.max(p.maxX, x);
-        p.minY = Math.min(p.minY, y);
-        p.maxY = Math.max(p.maxY, y);
-        p.count++;
-      }
-    }
-  }
-  return Object.keys(pieces).map(id => {
-    let p = pieces[id];
-    return {
-      id: parseInt(id),
-      color: p.color,
-      minX: p.minX,
-      maxX: p.maxX,
-      minY: p.minY,
-      width: p.maxX - p.minX + 1,
-      height: p.maxY - p.minY + 1
-    };
-  }).sort((a, b) => a.id - b.id);
-}
 
 function checkStage1(b) {
-  let stats = getPieceStats(b);
-  if (stats.length !== 2) return false;
-  const isVertical = stats.every(p => p.width === 1 && p.height === 4);
-  const isSeparated = Math.abs(stats[0].minX - stats[1].minX) > 1;
-  return isVertical && isSeparated;
+  // 水色(1)が赤エリア(17, 18)に存在
+  let e = countColorEdges(b, 17, 18, 1);
+  if (e.v !== 0 || e.h < 4) return false; // ミミは縦エッジ0、横エッジは上下に繋がっているため4本以上
+  
+  let xs = new Set();
+  for(let y=17; y<=18; y++) {
+    for(let x=0; x<10; x++) {
+      if(b[y][x].color === 1) xs.add(x);
+    }
+  }
+  if (xs.size !== 2) return false;
+  let arr = Array.from(xs);
+  return Math.abs(arr[0] - arr[1]) > 1; // 2本が離れていること
 }
 
 function checkStage2(b) {
-  let stats = getPieceStats(b);
-  if (stats.length !== 2) return false;
-  const isVertical = stats.every(p => p.width === 1 && p.height === 4);
-  const isAdjacent = Math.abs(stats[0].minX - stats[1].minX) === 1;
-  const isSameHeight = stats[0].minY === stats[1].minY;
-  return isVertical && isAdjacent && isSameHeight;
+  let e = countColorEdges(b, 17, 18, 1);
+  if (e.v !== 2 || e.h < 4) return false; // オウは2本くっついているため縦エッジが2本
+  
+  let xs = new Set();
+  for(let y=17; y<=18; y++) {
+    for(let x=0; x<10; x++) {
+      if(b[y][x].color === 1) xs.add(x);
+    }
+  }
+  if (xs.size !== 2) return false;
+  let arr = Array.from(xs);
+  return Math.abs(arr[0] - arr[1]) === 1; // 2本が隣接していること
+}
+
+// ステージ3と4の共通判定 (コーラ)
+function checkColaStage(b, targetRows) {
+  let sY = Math.min(...targetRows);
+  let eY = Math.max(...targetRows);
+  
+  let eT = countColorEdges(b, sY, eY, 6); // T(紫)
+  let eJ = countColorEdges(b, sY, eY, 2); // J(青)
+  let eL = countColorEdges(b, sY, eY, 3); // L(橙)
+
+  // ①Tの色: 縦1, 横2
+  if (eT.v !== 1 || eT.h !== 2) return false;
+  // ②Jの色: 縦0, 横1
+  if (eJ.v !== 0 || eJ.h !== 1) return false;
+  // ③Lの色: 縦1, 横2
+  if (eL.v !== 1 || eL.h !== 2) return false;
+
+  // 順番: 左から T, J, L
+  let minX_T = getMinX(b, sY, eY, 6);
+  let minX_J = getMinX(b, sY, eY, 2);
+  let minX_L = getMinX(b, sY, eY, 3);
+
+  return (minX_T < minX_J && minX_J < minX_L);
 }
 
 function checkStage5(b) {
-  let stats = getPieceStats(b);
-  let tPieces = stats.filter(p => p.color === 6);
-  let oPieces = stats.filter(p => p.color === 4);
+  // 紫(6) と 黄(4)
+  let eT = countColorEdges(b, 17, 18, 6);
+  let eO = countColorEdges(b, 17, 18, 4);
+
+  // T2つ分で 縦3、横3 になる
+  if (eT.v !== 3 || eT.h !== 3) return false;
+  // Oは2x2なので 縦2、横2 になる
+  if (eO.v !== 2 || eO.h !== 2) return false;
   
-  if (tPieces.length < 2 || oPieces.length < 1) return false;
-
-  let tData = tPieces.map(p => {
-    let count = 0;
-    let minX = 10, maxX = -1;
-    for(let y = 17; y <= 18; y++) {
-      for(let x = 0; x < 10; x++) {
-        if(b[y][x].id === p.id) {
-          count++;
-          minX = Math.min(minX, x);
-          maxX = Math.max(maxX, x);
-        }
-      }
-    }
-    return { id: p.id, minX: p.minX, count: count, w: maxX >= minX ? (maxX - minX + 1) : 0 };
-  });
-
-  let validTs = tData.filter(t => t.count >= 3);
-  if (validTs.length < 2) return false;
-
-  let tVert = validTs.find(t => t.w === 2);
-  let tHorz = validTs.find(t => t.w === 3);
-  if (!tVert || !tHorz) return false;
-
-  let oPiece = oPieces[0];
-  let oMinX = 10;
-  let oCount = 0;
-  for(let y = 17; y <= 18; y++) {
-    for(let x = 0; x < 10; x++) {
-      if(b[y][x].id === oPiece.id) {
-        oCount++;
-        oMinX = Math.min(oMinX, x);
-      }
-    }
-  }
-
-  if (oCount !== 4) return false;
-  if (!(tVert.minX < tHorz.minX && tHorz.minX < oMinX)) return false;
-
-  return true;
+  let minX_T = getMinX(b, 17, 18, 6);
+  let minX_O = getMinX(b, 17, 18, 4);
+  return minX_T < minX_O;
 }
 
 function checkStage6(b) {
-  let stats = getPieceStats(b);
-  let tPieces = stats.filter(p => p.color === 6);
-  if (tPieces.length < 2) return false;
+  // 紫(6), 黄(4), 赤(7)
+  let eT = countColorEdges(b, 18, 19, 6);
+  let eO = countColorEdges(b, 18, 19, 4);
+  let eZ = countColorEdges(b, 18, 19, 7);
 
-  let tData = tPieces.map(p => {
-    let count = 0;
-    let minX = 10, maxX = -1;
-    for(let y = 18; y <= 19; y++) {
-      for(let x = 0; x < 10; x++) {
-        if(b[y][x].id === p.id) {
-          count++;
-          minX = Math.min(minX, x);
-          maxX = Math.max(maxX, x);
-        }
-      }
-    }
-    return { id: p.id, minX: p.minX, count: count, w: maxX >= minX ? (maxX - minX + 1) : 0 };
-  });
+  // T2つ分で 縦3、横3
+  if (eT.v !== 3 || eT.h !== 3) return false;
+  // 黄色(O)が上に2つ -> 縦1, 横0
+  if (eO.v !== 1 || eO.h !== 0) return false;
+  // 赤色(Z)が下に2つ -> 縦1, 横0
+  if (eZ.v !== 1 || eZ.h !== 0) return false;
 
-  let validTs = tData.filter(t => t.count >= 3);
-  if (validTs.length < 2) return false;
-
-  let tVert = validTs.find(t => t.w === 2);
-  let tHorz = validTs.find(t => t.w === 3);
-  if (!tVert || !tHorz) return false;
-
-  let oBlocks = [];
-  let zBlocks = [];
-  for(let x = 0; x < 10; x++) {
-      if (b[18][x].color === 4) oBlocks.push(x);
-      if (b[19][x].color === 7) zBlocks.push(x);
+  // 重なりチェック: 黄色と赤色が同じX座標に2つずつあるか
+  let oXs = [], zXs = [];
+  for(let x=0; x<10; x++) {
+    if(b[18][x].color === 4) oXs.push(x);
+    if(b[19][x].color === 7) zXs.push(x);
   }
-  
-  if (oBlocks.length !== 2 || zBlocks.length !== 2) return false;
-  if (oBlocks[0] !== zBlocks[0] || oBlocks[1] !== zBlocks[1]) return false;
-  
-  let ozMinX = oBlocks[0];
-  if (!(tVert.minX < tHorz.minX && tHorz.minX < ozMinX)) return false;
+  if(oXs.length !== 2 || zXs.length !== 2) return false;
+  if(oXs[0] !== zXs[0] || oXs[1] !== zXs[1]) return false;
 
-  return true;
+  let minX_T = getMinX(b, 18, 19, 6);
+  return minX_T < oXs[0];
 }
 
 function checkStageEX(b) {
-  const extracted = extractSilhouette(b);
-  const patternEX1 = [
-    [0, 0, 0, 1, 0, 0, 0, 0, 0], 
-    [0, 1, 0, 1, 0, 0, 0, 0, 1], 
-    [1, 1, 1, 1, 1, 0, 0, 0, 1], 
-    [1, 1, 1, 1, 1, 1, 1, 1, 0], 
-    [0, 1, 1, 1, 1, 1, 1, 1, 1]  
-  ];
-  const patternEX2 = [
-    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0], 
-    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0], 
-    [1, 1, 1, 1, 1, 0, 0, 0, 1, 1], 
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1], 
-    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]  
-  ];
-  return checkMatch(extracted, [patternEX1, patternEX2]);
+  // 赤エリア(17, 18) 右端1列除外なので maxX = 8
+  let eP = countColorEdges(b, 17, 18, 6, 8); // 紫(T)
+  let eB = countColorEdges(b, 17, 18, 2, 8); // 青(J)
+  let eO = countColorEdges(b, 17, 18, 3, 8); // 橙(L)
+  let eG = countColorEdges(b, 17, 18, 5, 8); // 緑(S)
+
+  // 画像から算出した正確なエッジ数と完全一致するか
+  if (eP.v !== 1 || eP.h !== 1) return false;
+  if (eB.v !== 4 || eB.h !== 4) return false;
+  if (eO.v !== 4 || eO.h !== 1) return false;
+  if (eG.v !== 1 || eG.h !== 1) return false;
+
+  return true;
 }
 
 const STAGES = [
@@ -649,6 +502,7 @@ function initStage(stageIndex) {
   targetArea.style.top = `${(20 - maxRow) * BLOCK_SIZE + 1}px`;
   targetArea.style.height = `${rowsCount * BLOCK_SIZE + 3}px`;
 
+  // EXステージのみ右端1マスを赤エリアから外す
   if (currentStageIndex === STAGES.length - 1) {
     targetArea.style.width = `${canvas.width - BLOCK_SIZE}px`; 
   } else {
