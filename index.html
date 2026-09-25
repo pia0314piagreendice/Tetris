@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Tetris Puzzle - Complete Edition</title>
+<title>SLIT Puzzle</title>
 <style>
   * {
     box-sizing: border-box;
@@ -11,9 +11,9 @@
   body {
     margin: 0;
     padding: 0;
-    background-color: #1e1e1e;
+    background-color: #222;
     color: #fff;
-    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-family: sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -23,166 +23,132 @@
     overflow: hidden;
   }
   
-  /* タイトルロゴ領域 */
   #title-logo {
     display: flex;
     gap: 15px;
     margin-top: 10px;
     margin-bottom: 5px;
-    align-items: center;
-    justify-content: center;
-    height: 40px;
   }
   .title-mino {
-    width: 25px;
-    height: 25px;
+    width: 30px;
+    height: 30px;
   }
-  #logo-S { transform: rotate(-45deg); }
-  #logo-L { transform: rotate(90deg); }
-  #logo-I { transform: rotate(90deg); }
-  #logo-T { transform: rotate(180deg); }
 
-  /* 問題文領域 */
   #riddle-container {
     width: 90%;
     max-width: 320px;
-    background: #2c3e50;
+    background: #333;
     padding: 6px 10px;
     border-radius: 8px;
     text-align: center;
-    border: 2px solid #34495e;
-    margin-bottom: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    border: 2px solid #ccc;
+    margin-bottom: 5px;
   }
   #riddle-title {
-    font-size: 11px;
-    color: #bdc3c7;
-    margin-bottom: 2px;
-    font-weight: bold;
-    letter-spacing: 1px;
+    font-size: 12px;
+    color: #ccc;
   }
   #riddle-text {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: bold;
-    color: #ecf0f1;
+    color: #fff;
   }
   
   #game-layout {
     display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    justify-content: center;
+    gap: 10px;
+    align-items: flex-end; 
   }
 
   #board-container {
     position: relative;
-    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    height: 404px; 
   }
   canvas#board {
     background-color: #000;
     border: 2px solid #555;
     display: block;
-    border-radius: 4px;
+    box-sizing: content-box;
   }
   
   #target-area {
     position: absolute;
     left: 0;
     width: 100%;
-    background-color: rgba(231, 76, 60, 0.25);
-    border-top: 1px dashed rgba(231, 76, 60, 0.6);
-    border-bottom: 1px dashed rgba(231, 76, 60, 0.6);
+    background-color: rgba(255, 0, 0, 0.25);
+    border-top: 1px dashed rgba(255, 0, 0, 0.5);
+    border-bottom: 1px dashed rgba(255, 0, 0, 0.5);
     pointer-events: none;
     display: none;
   }
 
-  /* サイドパネル (NEXT + リセットボタン) */
   #side-panel {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 75px; /* 固定幅 */
+    justify-content: flex-end; 
+    width: 70px;
+    height: 404px; 
+  }
+  
+  #next-container {
+    margin-bottom: auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   .next-label {
-    font-size: 10px;
-    font-weight: bold;
-    margin-bottom: 4px;
-    color: #bdc3c7;
-    letter-spacing: 1px;
+    font-size: 11px;
+    margin-bottom: 3px;
+    color: #aaa;
   }
   canvas#next-box {
     background: #111;
     border: 2px solid #555;
     border-radius: 4px;
-    display: block;
     width: 100%;
   }
-
-  .reset-buttons-container {
+  
+  #reset-btns {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-top: 15px;
     width: 100%;
   }
-  .btn-reset-side {
-    width: 100%;
-    font-size: 10px;
-    padding: 6px 2px;
-    border: none;
-    border-radius: 4px;
+  .btn-reset {
+    background: #c0392b;
     color: white;
+    font-size: 10px;
     font-weight: bold;
-    cursor: pointer;
+    padding: 6px 2px;
+    border-radius: 6px;
     line-height: 1.3;
-    text-align: center;
+    border: none;
+    cursor: pointer;
     touch-action: manipulation;
   }
-  #btn-reset-stage {
-    background: #e67e22;
-    box-shadow: 0 3px 0 #d35400;
-  }
-  #btn-reset-stage:active {
-    background: #d35400;
-    box-shadow: 0 0 0 #d35400;
-    transform: translateY(3px);
-  }
-  #btn-reset-all {
-    background: #c0392b;
-    box-shadow: 0 3px 0 #922b21;
-  }
-  #btn-reset-all:active {
-    background: #a93226;
-    box-shadow: 0 0 0 #922b21;
-    transform: translateY(3px);
-  }
+  .btn-reset:active { background: #e74c3c; }
   
   #controls {
     margin-top: 10px;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+    gap: 8px;
     width: 90%;
-    max-width: 200px; /* コントロールの幅を少し縮小 */
+    max-width: 280px;
   }
   .btn {
-    background: #34495e;
+    background: #444;
     border: none;
     color: white;
-    padding: 10px 0;
+    padding: 12px 0;
     font-size: 18px;
     border-radius: 8px;
     user-select: none;
     touch-action: manipulation;
-    box-shadow: 0 3px 0 #2c3e50;
-    transition: transform 0.1s, box-shadow 0.1s;
-    cursor: pointer;
   }
-  .btn:active {
-    background: #2c3e50;
-    box-shadow: 0 0 0 #2c3e50;
-    transform: translateY(3px);
-  }
+  .btn:active { background: #666; }
   .grid-blank { visibility: hidden; }
 
   #message-window {
@@ -190,55 +156,46 @@
     top: 30%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(44, 62, 80, 0.95);
-    border: 2px solid #f1c40f;
-    padding: 20px 15px;
-    border-radius: 12px;
+    background: rgba(10, 10, 10, 0.95);
+    border: 2px solid #f39c12;
+    padding: 15px 20px;
+    border-radius: 10px;
     text-align: center;
     z-index: 100;
     display: none;
-    width: 85%;
-    max-width: 300px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    width: 80%;
+    max-width: 280px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.8);
   }
   #message-text {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: bold;
     margin-bottom: 12px;
-    line-height: 1.5;
-    white-space: pre-wrap;
   }
   #message-btn {
-    background: #f1c40f;
-    color: #2c3e50;
+    background: #f39c12;
+    color: #000;
     border: none;
     padding: 8px 16px;
     font-size: 14px;
     font-weight: bold;
-    border-radius: 6px;
+    border-radius: 5px;
     cursor: pointer;
-    width: 100%;
-    box-shadow: 0 3px 0 #d4ac0d;
-    display: none; /* デフォルト非表示 */
-  }
-  #message-btn:active {
-    transform: translateY(3px);
-    box-shadow: 0 0 0 #d4ac0d;
   }
 </style>
 </head>
 <body>
 
 <div id="title-logo">
-  <canvas id="logo-S" class="title-mino"></canvas>
-  <canvas id="logo-L" class="title-mino"></canvas>
-  <canvas id="logo-I" class="title-mino"></canvas>
-  <canvas id="logo-T" class="title-mino"></canvas>
+  <canvas id="logo-S" class="title-mino" style="transform: rotate(-45deg);"></canvas>
+  <canvas id="logo-L" class="title-mino" style="transform: rotate(90deg);"></canvas>
+  <canvas id="logo-I" class="title-mino" style="transform: rotate(90deg);"></canvas>
+  <canvas id="logo-T" class="title-mino" style="transform: rotate(180deg);"></canvas>
 </div>
 
 <div id="riddle-container">
   <div id="riddle-title">STAGE</div>
-  <div id="riddle-text">Loading...</div>
+  <div id="riddle-text"></div>
 </div>
 
 <div id="game-layout">
@@ -246,23 +203,24 @@
     <canvas id="board" width="200" height="400"></canvas>
     <div id="target-area"></div>
   </div>
-  
   <div id="side-panel">
-    <div class="next-label">NEXT</div>
-    <canvas id="next-box" width="50" height="150"></canvas>
-    <div class="reset-buttons-container">
-      <button class="btn-reset-side" id="btn-reset-stage">このステージ<br>リセット</button>
-      <button class="btn-reset-side" id="btn-reset-all">ステージ1から<br>やり直す</button>
+    <div id="next-container">
+      <div class="next-label">NEXT</div>
+      <canvas id="next-box" width="60" height="180"></canvas>
+    </div>
+    <div id="reset-btns">
+      <button class="btn-reset" id="btn-reset-stage">このステージ<br>リセット</button>
+      <button class="btn-reset" id="btn-reset-all">ステージ１から<br>リセット</button>
     </div>
   </div>
 </div>
 
 <div id="controls">
-  <button class="btn" id="btn-left">◀</button>
+  <button class="btn" id="btn-left">←</button>
   <button class="btn" id="btn-rotate">↻</button>
-  <button class="btn" id="btn-right">▶</button>
+  <button class="btn" id="btn-right">→</button>
   <div class="grid-blank"></div>
-  <button class="btn" id="btn-down">▼</button>
+  <button class="btn" id="btn-down">↓</button>
   <button class="btn" id="btn-drop">⏬</button>
 </div>
 
@@ -283,6 +241,45 @@ const SHAPES = {
 };
 const COLORS = [null, '#00ffff', '#0000ff', '#ffa500', '#ffff00', '#00ff00', '#800080', '#ff0000'];
 
+const STAGES = [
+  {
+    title: "ミミを作ろう！",
+    sequence: ['I', 'I'],
+    targetRows: [2, 3],
+    check: (b) => checkStage1(b)
+  },
+  {
+    title: "オウを作ろう！",
+    sequence: ['I', 'I'],
+    targetRows: [2, 3],
+    check: (b) => checkStage2(b)
+  },
+  {
+    title: "コーラを作ろう！",
+    sequence: ['T', 'J', 'L'],
+    targetRows: [2, 3],
+    check: (b) => checkStage3(b)
+  },
+  {
+    title: "コーラを作ろう！！",
+    sequence: ['T', 'L', 'J'],
+    targetRows: [1, 2],
+    check: (b) => checkStage4(b)
+  },
+  {
+    title: "カットを作ろう！",
+    sequence: ['I', 'O', 'S', 'T', 'I', 'L', 'T'],
+    targetRows: [2, 3],
+    check: (b) => checkStage5(b)
+  },
+  {
+    title: "カットを大文字で作ろう！",
+    sequence: ['I', 'O', 'S', 'T', 'I', 'L', 'T'],
+    targetRows: [2, 3],
+    check: (b) => checkStage6(b)
+  }
+];
+
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-box');
@@ -295,149 +292,14 @@ let pieceCounter = 0;
 let dropCounter = 0;
 let lastTime = 0;
 let gameOver = false;
+let isUpdating = false;
 let currentStageIndex = 0;
-let animationId = null;
-
-function getPieceStats(b) {
-  let pieces = {};
-  for (let y = 0; y < 20; y++) {
-    for (let x = 0; x < 10; x++) {
-      let cell = b[y][x];
-      if (cell.id > 0) {
-        if (!pieces[cell.id]) {
-          pieces[cell.id] = { id: cell.id, type: cell.type, color: cell.color, minX: x, maxX: x, minY: y, maxY: y };
-        }
-        let p = pieces[cell.id];
-        p.minX = Math.min(p.minX, x);
-        p.maxX = Math.max(p.maxX, x);
-        p.minY = Math.min(p.minY, y);
-        p.maxY = Math.max(p.maxY, y);
-      }
-    }
-  }
-  return Object.values(pieces).map(p => ({
-    id: p.id,
-    type: p.type,
-    color: p.color,
-    minX: p.minX,
-    minY: p.minY,
-    width: p.maxX - p.minX + 1,
-    height: p.maxY - p.minY + 1
-  }));
-}
-
-function checkColaStage(b, stageDef, targetCounts) {
-  let stats = getPieceStats(b);
-  if (stats.length !== 3) return false;
-  
-  let redMinX = { 'T': Infinity, 'J': Infinity, 'L': Infinity };
-  let redCount = { 'T': 0, 'J': 0, 'L': 0 };
-
-  for (let y of stageDef.targetRows) {
-    for (let x = 0; x < 10; x++) {
-      let cell = b[y][x];
-      if (cell.id > 0 && (cell.type === 'T' || cell.type === 'J' || cell.type === 'L')) {
-        redCount[cell.type]++;
-        redMinX[cell.type] = Math.min(redMinX[cell.type], x);
-      }
-    }
-  }
-
-  // 各ミノが指定されたマス数だけ赤エリアに入っているかチェック
-  if (redCount['T'] !== targetCounts['T']) return false;
-  if (redCount['J'] !== targetCounts['J']) return false;
-  if (redCount['L'] !== targetCounts['L']) return false;
-  
-  // 赤エリア内で T -> J -> L の順番に並んでいること
-  if (!(redMinX['T'] < redMinX['J'] && redMinX['J'] < redMinX['L'])) return false;
-
-  return true;
-}
-
-const STAGES = [
-  {
-    title: "ミミを作ろう！",
-    sequence: ['I', 'I'],
-    targetRows: [17, 18], // 下から2,3段目
-    check: (b) => {
-      let stats = getPieceStats(b);
-      if (stats.length !== 2) return false;
-      const isVertical = stats.every(p => p.type === 'I' && p.width === 1 && p.height === 4);
-      if (!isVertical) return false;
-      // 条件: 隣接していないこと (X座標の差が1より大きい)
-      return Math.abs(stats[0].minX - stats[1].minX) > 1;
-    }
-  },
-  {
-    title: "オウを作ろう！",
-    sequence: ['I', 'I'],
-    targetRows: [17, 18], // 下から2,3段目
-    check: (b) => {
-      let stats = getPieceStats(b);
-      if (stats.length !== 2) return false;
-      const isVertical = stats.every(p => p.type === 'I' && p.width === 1 && p.height === 4);
-      if (!isVertical) return false;
-      // 条件: 横に隣接していること (X座標の差が1)、かつ高さ(Y)が同じであること
-      const isAdjacent = Math.abs(stats[0].minX - stats[1].minX) === 1;
-      const isSameHeight = stats[0].minY === stats[1].minY;
-      return isAdjacent && isSameHeight;
-    }
-  },
-  {
-    title: "コーラを作ろう！",
-    sequence: ['T', 'J', 'L'],
-    targetRows: [17, 18], // 下から2,3段目
-    check: (b, stageDef) => checkColaStage(b, stageDef, { 'T': 3, 'J': 1, 'L': 2 })
-  },
-  {
-    title: "コーラを作ろう！！",
-    sequence: ['T', 'L', 'J'],
-    targetRows: [18, 19], // 下から1,2段目
-    check: (b, stageDef) => checkColaStage(b, stageDef, { 'T': 3, 'J': 4, 'L': 3 })
-  },
-  {
-    title: "カットを作ろう！",
-    sequence: ['I', 'O', 'S', 'T', 'I', 'L', 'T'],
-    targetRows: [18], // 下から2段目
-    check: (b) => {
-      const targetPattern1 = [
-        [0,0,0,0,0,0,0,0,1,0],
-        [0,1,0,0,0,0,1,0,1,1],
-        [1,1,0,1,1,1,0,1,1,0],
-        [0,1,0,0,1,0,1,1,1,1] 
-      ];
-      const targetPattern2 = [
-        [0,0,0,0,0,0,0,0,1,0],
-        [0,1,0,0,0,0,1,0,1,1],
-        [1,1,0,1,1,1,0,1,1,0],
-        [0,1,0,0,1,1,1,1,1,0] 
-      ];
-      // 上部16行は完全に空であること
-      for (let i = 0; i < 16; i++) {
-        for (let j = 0; j < 10; j++) {
-          if (b[i][j].color !== 0) return false;
-        }
-      }
-      
-      let match1 = true, match2 = true;
-      // 下部4行が指定パターンのいずれかと完全一致すること
-      for (let i = 0; i < 4; i++) {
-        for (let j = 0; j < 10; j++) {
-          let hasBlock = b[16+i][j].color !== 0;
-          if (hasBlock !== (targetPattern1[i][j] === 1)) match1 = false;
-          if (hasBlock !== (targetPattern2[i][j] === 1)) match2 = false;
-        }
-      }
-      return match1 || match2;
-    }
-  }
-];
 
 function drawLogoMino(id, type, color, scale) {
   const c = document.getElementById(id);
   const cx = c.getContext('2d');
   const matrix = SHAPES[type].shape;
-  c.width = 25; c.height = 25;
+  c.width = 30; c.height = 30;
   cx.fillStyle = color;
   const offsetX = (c.width - matrix[0].length * scale) / 2;
   const offsetY = (c.height - matrix.length * scale) / 2;
@@ -449,23 +311,18 @@ function drawLogoMino(id, type, color, scale) {
     });
   });
 }
-drawLogoMino('logo-S', 'S', '#00ff00', 7);
-drawLogoMino('logo-L', 'L', '#ffa500', 7);
-drawLogoMino('logo-I', 'I', '#00ffff', 7);
-drawLogoMino('logo-T', 'T', '#800080', 7);
+drawLogoMino('logo-S', 'S', '#00ff00', 8);
+drawLogoMino('logo-L', 'L', '#ffa500', 8);
+drawLogoMino('logo-I', 'I', '#00ffff', 8);
+drawLogoMino('logo-T', 'T', '#800080', 8);
 
-function initStage() {
-  if (animationId) {
-    cancelAnimationFrame(animationId);
-    animationId = null;
-  }
-  
+function initStage(stageIndex) {
+  currentStageIndex = stageIndex;
   const stage = STAGES[currentStageIndex];
-  document.getElementById('riddle-title').innerText = `STAGE ${currentStageIndex + 1} / ${STAGES.length}`;
+  document.getElementById('riddle-title').innerText = `STAGE ${currentStageIndex + 1}`;
   document.getElementById('riddle-text').innerText = stage.title;
   
-  // 盤面をクリアなオブジェクトの配列で初期化
-  board = Array.from({length: 20}, () => Array.from({length: 10}, () => ({color: 0, id: 0, type: ''})));
+  board = Array.from({length: 20}, () => Array(10).fill(null).map(() => ({color: 0, id: 0})));
   sequenceIndex = 0;
   pieceCounter = 0;
   dropCounter = 0;
@@ -475,25 +332,29 @@ function initStage() {
   const maxRow = Math.max(...stage.targetRows);
   const minRow = Math.min(...stage.targetRows);
   const rowsCount = maxRow - minRow + 1;
+  
   targetArea.style.display = 'block';
-  targetArea.style.height = `${rowsCount * BLOCK_SIZE}px`;
-  targetArea.style.top = `${minRow * BLOCK_SIZE}px`;
+  targetArea.style.bottom = 'auto';
+  
+  targetArea.style.top = `${(20 - maxRow) * BLOCK_SIZE + 1}px`;
+  targetArea.style.height = `${rowsCount * BLOCK_SIZE + 3}px`;
 
   hideMessage();
   spawnPiece();
 
-  lastTime = performance.now();
-  update();
+  if (!isUpdating) {
+    lastTime = performance.now();
+    update();
+  }
 }
 
 function spawnPiece() {
   if (sequenceIndex >= STAGES[currentStageIndex].sequence.length) {
-    checkWinCondition();
+    checkWin();
     return;
   }
   const type = STAGES[currentStageIndex].sequence[sequenceIndex++];
   pieceCounter++;
-  
   currentPiece = {
     type: type,
     id: pieceCounter,
@@ -503,9 +364,9 @@ function spawnPiece() {
   currentX = Math.floor((10 - currentPiece.matrix[0].length) / 2);
   currentY = 0;
   
-  if (collide(board, currentPiece, currentX, currentY)) {
+  if (collide(board, currentPiece)) {
     gameOver = true;
-    showMessage("失敗... ブロックが上限に達しました。", "", false, null);
+    showMessage("何かが違うようです…", false);
   }
   drawNext();
 }
@@ -521,10 +382,9 @@ function drawNext() {
       const nextType = stage.sequence[idx];
       const matrix = SHAPES[nextType].shape;
       const color = SHAPES[nextType].color;
-      const scale = 9;
-      
+      const scale = 10;
       const offsetX = (nextCanvas.width - matrix[0].length * scale) / 2;
-      const offsetY = i * 50 + (50 - matrix.length * scale) / 2;
+      const offsetY = i * 60 + (60 - matrix.length * scale) / 2;
       
       nextCtx.fillStyle = color;
       matrix.forEach((row, y) => {
@@ -538,17 +398,15 @@ function drawNext() {
   }
 }
 
-function collide(b, p, px = currentX, py = currentY) {
+function collide(b, p, testX = currentX, testY = currentY) {
   const m = p.matrix;
   for (let y = 0; y < m.length; ++y) {
     for (let x = 0; x < m[y].length; ++x) {
       if (m[y][x] !== 0) {
-        const targetX = x + px;
-        const targetY = y + py;
-        // 壁または床に到達したかチェック (突き抜け防止)
-        if (targetX < 0 || targetX >= 10 || targetY >= 20) return true;
-        // 既存ブロックと衝突したかチェック
-        if (targetY >= 0 && b[targetY][targetX] && b[targetY][targetX].color !== 0) return true;
+        if (testY + y >= 20 || testX + x < 0 || testX + x >= 10 || 
+           (b[testY + y] && b[testY + y][testX + x].color !== 0)) {
+          return true;
+        }
       }
     }
   }
@@ -559,22 +417,10 @@ function merge(b, p) {
   p.matrix.forEach((row, y) => {
     row.forEach((value, x) => {
       if (value !== 0) {
-        b[y + currentY][x + currentX] = { color: p.colorIndex, id: p.id, type: p.type };
+        b[y + currentY][x + currentX] = { color: p.colorIndex, id: p.id };
       }
     });
   });
-}
-
-function clearLines() {
-  outer: for (let y = board.length - 1; y >= 0; --y) {
-    for (let x = 0; x < board[y].length; ++x) {
-      if (board[y][x].color === 0) continue outer;
-    }
-    const row = board.splice(y, 1)[0];
-    const newRow = Array.from({length: 10}, () => ({color: 0, id: 0, type: ''}));
-    board.unshift(newRow);
-    ++y;
-  }
 }
 
 function rotate(m) {
@@ -582,21 +428,21 @@ function rotate(m) {
 }
 
 function playerRotate() {
-  if (gameOver || !currentPiece) return;
+  if (gameOver) return;
   const orig = currentPiece.matrix;
   currentPiece.matrix = rotate(currentPiece.matrix);
-  if (collide(board, currentPiece, currentX, currentY)) currentPiece.matrix = orig;
+  if (collide(board, currentPiece)) currentPiece.matrix = orig;
 }
 
 function playerMove(dir) {
-  if (gameOver || !currentPiece) return;
+  if (gameOver) return;
   if (!collide(board, currentPiece, currentX + dir, currentY)) {
     currentX += dir;
   }
 }
 
 function playerDrop() {
-  if (gameOver || !currentPiece) return;
+  if (gameOver) return;
   if (!collide(board, currentPiece, currentX, currentY + 1)) {
     currentY++;
   } else {
@@ -608,7 +454,7 @@ function playerDrop() {
 }
 
 function hardDrop() {
-  if (gameOver || !currentPiece) return;
+  if (gameOver) return;
   while (!collide(board, currentPiece, currentX, currentY + 1)) {
     currentY++;
   }
@@ -618,53 +464,225 @@ function hardDrop() {
   dropCounter = 0;
 }
 
-function getGhostY() {
-  if (!currentPiece) return currentY;
-  let gy = currentY;
-  while (!collide(board, currentPiece, currentX, gy + 1)) {
-    gy++;
+function clearLines() {
+  outer: for (let y = board.length - 1; y >= 0; --y) {
+    for (let x = 0; x < board[y].length; ++x) {
+      if (board[y][x].color === 0) continue outer;
+    }
+    const row = board.splice(y, 1)[0];
+    const newRow = Array.from({length: 10}, () => ({color: 0, id: 0}));
+    board.unshift(newRow);
+    ++y;
   }
-  return gy;
 }
 
-function checkWinCondition() {
+function getPieceStats(b) {
+  let pieces = {};
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 10; x++) {
+      let cell = b[y][x];
+      if (cell.id > 0) {
+        if (!pieces[cell.id]) {
+          pieces[cell.id] = { minX: x, maxX: x, minY: y, maxY: y, count: 0, color: cell.color };
+        }
+        let p = pieces[cell.id];
+        p.minX = Math.min(p.minX, x);
+        p.maxX = Math.max(p.maxX, x);
+        p.minY = Math.min(p.minY, y);
+        p.maxY = Math.max(p.maxY, y);
+        p.count++;
+      }
+    }
+  }
+  return Object.keys(pieces).map(id => {
+    let p = pieces[id];
+    return {
+      id: parseInt(id),
+      color: p.color,
+      minX: p.minX,
+      maxX: p.maxX,
+      minY: p.minY,
+      width: p.maxX - p.minX + 1,
+      height: p.maxY - p.minY + 1
+    };
+  }).sort((a, b) => a.id - b.id);
+}
+
+function countBlocksInArea(b, pieceId, yStart, yEnd) {
+    let count = 0;
+    for (let y = yStart; y <= yEnd; y++) {
+        for (let x = 0; x < 10; x++) {
+            if (b[y][x].id === pieceId) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+function checkStage1(b) {
+  let stats = getPieceStats(b);
+  if (stats.length !== 2) return false;
+  const isVertical = stats.every(p => p.width === 1 && p.height === 4);
+  const isSeparated = Math.abs(stats[0].minX - stats[1].minX) > 1;
+  if (!(isVertical && isSeparated)) return false;
+  for (let p of stats) {
+      if (countBlocksInArea(b, p.id, 17, 18) !== 2) return false;
+  }
+  return true;
+}
+
+function checkStage2(b) {
+  let stats = getPieceStats(b);
+  if (stats.length !== 2) return false;
+  const isVertical = stats.every(p => p.width === 1 && p.height === 4);
+  const isAdjacent = Math.abs(stats[0].minX - stats[1].minX) === 1;
+  const isSameHeight = stats[0].minY === stats[1].minY;
+  if (!(isVertical && isAdjacent && isSameHeight)) return false;
+  for (let p of stats) {
+      if (countBlocksInArea(b, p.id, 17, 18) !== 2) return false;
+  }
+  return true;
+}
+
+function checkColaStage(b, targetRows) {
+  let stats = getPieceStats(b);
+  let pT = stats.find(p => p.color === 6);
+  let pJ = stats.find(p => p.color === 2);
+  let pL = stats.find(p => p.color === 3);
+  
+  if (!pT || !pJ || !pL) return false;
+
+  let minRow = Math.min(...targetRows);
+  let maxRow = Math.max(...targetRows);
+  let startY = 20 - maxRow;
+  let endY = 20 - minRow;
+
+  let jCount = countBlocksInArea(b, pJ.id, startY, endY);
+  let lCount = countBlocksInArea(b, pL.id, startY, endY);
+
+  // ユーザー様の「テキスト指示(L=3)」と「実際の画像での形(L=2)」の両方を救済するため、
+  // Lミノが2マスまたは3マスであればクリアと判定するように柔軟化しました。
+  // ステージ3(startY=17) の場合は J=1, L=2or3
+  // ステージ4(startY=18) の場合は J=1or4, L=3
+  if (startY === 17) {
+      if (jCount !== 1) return false;
+      if (lCount !== 2 && lCount !== 3) return false;
+  } else {
+      if (jCount !== 1 && jCount !== 4) return false;
+      if (lCount !== 3) return false;
+  }
+
+  // 並び順のチェックは、密着時の誤判定を防ぐためにブロック全体のX座標を比較します
+  if (!(pT.minX < pJ.minX && pJ.minX < pL.minX)) return false;
+
+  return true;
+}
+
+function checkStage3(b) { return checkColaStage(b, [2, 3]); }
+function checkStage4(b) { return checkColaStage(b, [1, 2]); }
+
+function checkStage5(b) {
+  let stats = getPieceStats(b);
+  
+  let tPieces = stats.filter(p => p.color === 6);
+  let oPieces = stats.filter(p => p.color === 4);
+  
+  if (tPieces.length !== 2 || oPieces.length !== 1) return false;
+
+  // 縦3マスに伸びたTと、横3マスに伸びたTを特定
+  let tVert = tPieces.find(p => p.width === 2 && p.height === 3);
+  let tHorz = tPieces.find(p => p.width === 3 && p.height === 2);
+  
+  if (!tVert || !tHorz) return false;
+
+  let oPiece = oPieces[0];
+
+  // 順番のチェック：左から 縦T -> 横T -> O
+  if (!(tVert.minX < tHorz.minX && tHorz.minX < oPiece.minX)) return false;
+
+  // 赤エリア (Y=17, 18) のマス数チェック
+  if (countBlocksInArea(b, tVert.id, 17, 18) !== 3) return false;
+  if (countBlocksInArea(b, tHorz.id, 17, 18) !== 3) return false;
+  if (countBlocksInArea(b, oPiece.id, 17, 18) !== 4) return false;
+
+  return true;
+}
+
+function checkStage6(b) {
+  // パターン1: 基準 (画像通り、右下に隙間あり)
+  const targetPattern1 = [
+    [0,1,0,0,0,0,0,1,0,0],
+    [1,1,0,1,1,1,1,1,1,0],
+    [0,1,0,0,1,0,1,1,1,1]
+  ];
+  // パターン2: 右下のIミノが左に1マスずれたパターン
+  const targetPattern2 = [
+    [0,1,0,0,0,0,0,1,0,0],
+    [1,1,0,1,1,1,1,1,1,0],
+    [0,1,0,0,1,1,1,1,1,0]
+  ];
+  
+  let minY = 20, maxY = -1;
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (b[y][x].color !== 0) {
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+
+  if (maxY === -1) return false;
+  if (maxY - minY + 1 > 3) return false;
+
+  let match1 = true;
+  let match2 = true;
+  
+  for (let i = 0; i < 3; i++) {
+    let boardY = maxY - 2 + i; 
+    for (let x = 0; x < 10; x++) {
+      let hasBlock = (boardY >= 0 && boardY < 20) ? (b[boardY][x].color !== 0) : false;
+      
+      if (hasBlock !== (targetPattern1[i][x] === 1)) match1 = false;
+      if (hasBlock !== (targetPattern2[i][x] === 1)) match2 = false;
+    }
+  }
+  
+  return match1 || match2;
+}
+
+function checkWin() {
   gameOver = true;
   const stage = STAGES[currentStageIndex];
-  if (stage.check(board, stage)) {
+  if (stage.check(board)) {
     if (currentStageIndex === STAGES.length - 1) {
-      showMessage("🎉 全ての謎が解けました！ 🎉\n\n見事な推察力です！", "", true, null);
+      showMessage("🎉 全ての謎が解けました！", true);
     } else {
-      showMessage("正解！\n見事な配置です。", "次のステージへ", true, () => {
-        currentStageIndex++;
-        initStage();
-      });
+      showMessage("CLEAR!", true);
     }
   } else {
-    // 失敗時はボタンなし（リセットボタンを押させる）
-    showMessage("何かが違うようです…", "", false, null);
+    showMessage("何かが違うようです…", false);
   }
 }
 
-function showMessage(text, btnText, isClear, callback) {
+function showMessage(text, isClear) {
   const win = document.getElementById('message-window');
   const btn = document.getElementById('message-btn');
   document.getElementById('message-text').innerText = text;
-  document.getElementById('message-text').style.color = isClear ? "#2ecc71" : "#e74c3c";
+  document.getElementById('message-text').style.color = isClear ? "#00ff00" : "#ff3333";
   
-  if (isClear) {
-    if (currentStageIndex === STAGES.length - 1) {
-      btn.style.display = 'none';
-    } else {
-      btn.style.display = 'inline-block';
-      btn.innerText = btnText;
-      btn.onclick = () => {
-        win.style.display = 'none';
-        if(callback) callback();
-      };
-    }
-  } else {
-    // 不正解の場合はボタンを隠す
+  if (isClear && currentStageIndex === STAGES.length - 1) {
     btn.style.display = 'none';
+  } else if (!isClear) {
+    btn.style.display = 'none';
+  } else {
+    btn.style.display = 'inline-block';
+    btn.innerText = "次のステージへ";
+    btn.onclick = () => {
+      currentStageIndex++;
+      initStage(currentStageIndex);
+    };
   }
   win.style.display = 'block';
 }
@@ -677,7 +695,6 @@ function draw() {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // 盤面描画
   board.forEach((row, y) => {
     row.forEach((cell, x) => {
       if (cell.color !== 0) {
@@ -688,10 +705,11 @@ function draw() {
   });
 
   if (currentPiece && !gameOver) {
-    // プレビュー(ゴースト)ピース描画
-    let ghostY = getGhostY();
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = COLORS[currentPiece.colorIndex];
+    let ghostY = currentY;
+    while (!collide(board, currentPiece, currentX, ghostY + 1)) {
+      ghostY++;
+    }
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
     currentPiece.matrix.forEach((row, y) => {
       row.forEach((value, x) => {
         if (value !== 0) {
@@ -699,9 +717,7 @@ function draw() {
         }
       });
     });
-    ctx.globalAlpha = 1.0;
 
-    // 現在操作中のピース描画
     ctx.fillStyle = COLORS[currentPiece.colorIndex];
     currentPiece.matrix.forEach((row, y) => {
       row.forEach((value, x) => {
@@ -716,8 +732,10 @@ function draw() {
 function update(time = 0) {
   if (gameOver) {
     draw();
+    isUpdating = false;
     return;
   }
+  isUpdating = true;
   const deltaTime = time - lastTime;
   lastTime = time;
   dropCounter += deltaTime;
@@ -727,27 +745,23 @@ function update(time = 0) {
   }
 
   draw();
-  animationId = requestAnimationFrame(update);
+  requestAnimationFrame(update);
 }
 
-const bindInput = (id, fn) => {
+const bindTouch = (id, fn) => {
   const el = document.getElementById(id);
-  el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); }, { passive: false });
-  el.addEventListener('mousedown', (e) => { e.preventDefault(); fn(); });
+  el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); });
+  el.addEventListener('click', (e) => { fn(); });
 };
 
-bindInput('btn-left', () => playerMove(-1));
-bindInput('btn-right', () => playerMove(1));
-bindInput('btn-rotate', () => playerRotate());
-bindInput('btn-down', () => playerDrop());
-bindInput('btn-drop', () => hardDrop());
+bindTouch('btn-left', () => playerMove(-1));
+bindTouch('btn-right', () => playerMove(1));
+bindTouch('btn-rotate', () => playerRotate());
+bindTouch('btn-down', () => playerDrop());
+bindTouch('btn-drop', () => hardDrop());
 
-// サイドパネルのリセットボタン処理
-bindInput('btn-reset-stage', () => initStage());
-bindInput('btn-reset-all', () => {
-  currentStageIndex = 0;
-  initStage();
-});
+bindTouch('btn-reset-stage', () => initStage(currentStageIndex));
+bindTouch('btn-reset-all', () => initStage(0));
 
 document.addEventListener('keydown', event => {
   if (gameOver) return;
@@ -758,9 +772,7 @@ document.addEventListener('keydown', event => {
   else if (event.keyCode === 32) hardDrop();
 });
 
-window.onload = function() {
-  initStage();
-};
+initStage(0);
 </script>
 </body>
 </html>
