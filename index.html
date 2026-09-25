@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Tetris Puzzle - Complete Edition</title>
+<title>SLIT Puzzle</title>
 <style>
   * {
     box-sizing: border-box;
@@ -11,9 +11,9 @@
   body {
     margin: 0;
     padding: 0;
-    background-color: #1e1e1e;
+    background-color: #222;
     color: #fff;
-    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-family: sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -23,222 +23,173 @@
     overflow: hidden;
   }
   
-  /* タイトルロゴ領域 */
+  /* 上部タイトルロゴ (SLIT) */
   #title-logo {
     display: flex;
     gap: 15px;
     margin-top: 10px;
     margin-bottom: 5px;
-    align-items: center;
-    justify-content: center;
-    height: 40px;
   }
   .title-mino {
-    width: 25px;
-    height: 25px;
+    width: 30px;
+    height: 30px;
   }
-  #logo-S { transform: rotate(-45deg); }
-  #logo-L { transform: rotate(90deg); }
-  #logo-I { transform: rotate(90deg); }
-  #logo-T { transform: rotate(180deg); }
 
-  /* 問題文領域 */
   #riddle-container {
     width: 90%;
     max-width: 320px;
-    background: #2c3e50;
+    background: #333;
     padding: 6px 10px;
     border-radius: 8px;
     text-align: center;
-    border: 2px solid #34495e;
-    margin-bottom: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    border: 2px solid #ccc;
+    margin-bottom: 5px;
   }
   #riddle-title {
-    font-size: 11px;
-    color: #bdc3c7;
-    margin-bottom: 2px;
-    font-weight: bold;
-    letter-spacing: 1px;
+    font-size: 12px;
+    color: #ccc;
   }
   #riddle-text {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: bold;
-    color: #ecf0f1;
+    color: #fff;
   }
   
   #game-layout {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     align-items: flex-start;
-    justify-content: center;
   }
 
   #board-container {
     position: relative;
-    box-shadow: 0 0 15px rgba(0,0,0,0.5);
   }
   canvas#board {
     background-color: #000;
     border: 2px solid #555;
     display: block;
-    border-radius: 4px;
+    box-sizing: content-box; /* 描画スケールのズレを防止 */
   }
   
+  /* 赤い判定エリア */
   #target-area {
     position: absolute;
     left: 0;
     width: 100%;
-    background-color: rgba(231, 76, 60, 0.25);
-    border-top: 1px dashed rgba(231, 76, 60, 0.6);
-    border-bottom: 1px dashed rgba(231, 76, 60, 0.6);
+    background-color: rgba(255, 0, 0, 0.25);
+    border-top: 1px dashed rgba(255, 0, 0, 0.5);
+    border-bottom: 1px dashed rgba(255, 0, 0, 0.5);
     pointer-events: none;
     display: none;
   }
 
-  /* サイドパネル (NEXT + リセットボタン) */
   #side-panel {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 75px; /* 固定幅 */
+    width: 70px;
   }
   .next-label {
-    font-size: 10px;
-    font-weight: bold;
-    margin-bottom: 4px;
-    color: #bdc3c7;
-    letter-spacing: 1px;
+    font-size: 11px;
+    margin-bottom: 3px;
+    color: #aaa;
   }
   canvas#next-box {
     background: #111;
     border: 2px solid #555;
     border-radius: 4px;
-    display: block;
     width: 100%;
   }
-
-  .reset-buttons-container {
+  
+  #reset-btns {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-top: 15px;
+    margin-top: 10px;
     width: 100%;
   }
-  .btn-reset-side {
-    width: 100%;
-    font-size: 10px;
-    padding: 6px 2px;
-    border: none;
-    border-radius: 4px;
+  .btn-reset {
+    background: #c0392b;
     color: white;
+    font-size: 10px;
     font-weight: bold;
-    cursor: pointer;
+    padding: 6px 2px;
+    border-radius: 6px;
     line-height: 1.3;
-    text-align: center;
+    border: none;
+    cursor: pointer;
     touch-action: manipulation;
   }
-  #btn-reset-stage {
-    background: #e67e22;
-    box-shadow: 0 3px 0 #d35400;
-  }
-  #btn-reset-stage:active {
-    background: #d35400;
-    box-shadow: 0 0 0 #d35400;
-    transform: translateY(3px);
-  }
-  #btn-reset-all {
-    background: #c0392b;
-    box-shadow: 0 3px 0 #922b21;
-  }
-  #btn-reset-all:active {
-    background: #a93226;
-    box-shadow: 0 0 0 #922b21;
-    transform: translateY(3px);
-  }
+  .btn-reset:active { background: #e74c3c; }
   
   #controls {
     margin-top: 10px;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+    gap: 8px;
     width: 90%;
-    max-width: 200px; /* コントロールの幅を少し縮小 */
+    max-width: 280px;
   }
   .btn {
-    background: #34495e;
+    background: #444;
     border: none;
     color: white;
-    padding: 10px 0;
+    padding: 12px 0;
     font-size: 18px;
     border-radius: 8px;
     user-select: none;
     touch-action: manipulation;
-    box-shadow: 0 3px 0 #2c3e50;
-    transition: transform 0.1s, box-shadow 0.1s;
-    cursor: pointer;
   }
-  .btn:active {
-    background: #2c3e50;
-    box-shadow: 0 0 0 #2c3e50;
-    transform: translateY(3px);
-  }
+  .btn:active { background: #666; }
   .grid-blank { visibility: hidden; }
 
+  /* メッセージウィンドウ */
   #message-window {
     position: absolute;
     top: 30%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(44, 62, 80, 0.95);
-    border: 2px solid #f1c40f;
-    padding: 20px 15px;
-    border-radius: 12px;
+    background: rgba(10, 10, 10, 0.95);
+    border: 2px solid #f39c12;
+    padding: 15px 20px;
+    border-radius: 10px;
     text-align: center;
     z-index: 100;
     display: none;
-    width: 85%;
-    max-width: 300px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    width: 80%;
+    max-width: 280px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.8);
   }
   #message-text {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: bold;
     margin-bottom: 12px;
-    line-height: 1.5;
-    white-space: pre-wrap;
   }
   #message-btn {
-    background: #f1c40f;
-    color: #2c3e50;
+    background: #f39c12;
+    color: #000;
     border: none;
     padding: 8px 16px;
     font-size: 14px;
     font-weight: bold;
-    border-radius: 6px;
+    border-radius: 5px;
     cursor: pointer;
-    width: 100%;
-    box-shadow: 0 3px 0 #d4ac0d;
-    display: none; /* デフォルト非表示 */
-  }
-  #message-btn:active {
-    transform: translateY(3px);
-    box-shadow: 0 0 0 #d4ac0d;
   }
 </style>
 </head>
 <body>
 
+<!-- SLIT ロゴ (各ミノを回転) -->
 <div id="title-logo">
-  <canvas id="logo-S" class="title-mino"></canvas>
-  <canvas id="logo-L" class="title-mino"></canvas>
-  <canvas id="logo-I" class="title-mino"></canvas>
-  <canvas id="logo-T" class="title-mino"></canvas>
+  <canvas id="logo-S" class="title-mino" style="transform: rotate(-45deg);"></canvas>
+  <canvas id="logo-L" class="title-mino" style="transform: rotate(90deg);"></canvas>
+  <canvas id="logo-I" class="title-mino" style="transform: rotate(90deg);"></canvas>
+  <canvas id="logo-T" class="title-mino" style="transform: rotate(180deg);"></canvas>
 </div>
 
 <div id="riddle-container">
   <div id="riddle-title">STAGE</div>
-  <div id="riddle-text">Loading...</div>
+  <div id="riddle-text"></div>
 </div>
 
 <div id="game-layout">
@@ -246,23 +197,22 @@
     <canvas id="board" width="200" height="400"></canvas>
     <div id="target-area"></div>
   </div>
-  
   <div id="side-panel">
     <div class="next-label">NEXT</div>
-    <canvas id="next-box" width="50" height="150"></canvas>
-    <div class="reset-buttons-container">
-      <button class="btn-reset-side" id="btn-reset-stage">このステージ<br>リセット</button>
-      <button class="btn-reset-side" id="btn-reset-all">ステージ1から<br>やり直す</button>
+    <canvas id="next-box" width="60" height="180"></canvas>
+    <div id="reset-btns">
+      <button class="btn-reset" id="btn-reset-stage">このステージ<br>リセット</button>
+      <button class="btn-reset" id="btn-reset-all">ステージ１から<br>リセット</button>
     </div>
   </div>
 </div>
 
 <div id="controls">
-  <button class="btn" id="btn-left">◀</button>
+  <button class="btn" id="btn-left">←</button>
   <button class="btn" id="btn-rotate">↻</button>
-  <button class="btn" id="btn-right">▶</button>
+  <button class="btn" id="btn-right">→</button>
   <div class="grid-blank"></div>
-  <button class="btn" id="btn-down">▼</button>
+  <button class="btn" id="btn-down">↓</button>
   <button class="btn" id="btn-drop">⏬</button>
 </div>
 
@@ -283,6 +233,39 @@ const SHAPES = {
 };
 const COLORS = [null, '#00ffff', '#0000ff', '#ffa500', '#ffff00', '#00ff00', '#800080', '#ff0000'];
 
+const STAGES = [
+  {
+    title: "ミミを作ろう！",
+    sequence: ['I', 'I'],
+    targetRows: [2, 3],
+    check: (b) => checkStage1(b)
+  },
+  {
+    title: "オウを作ろう！",
+    sequence: ['I', 'I'],
+    targetRows: [2, 3],
+    check: (b) => checkStage2(b)
+  },
+  {
+    title: "コーラを作ろう！",
+    sequence: ['T', 'J', 'L'],
+    targetRows: [2, 3],
+    check: (b) => checkStage3(b)
+  },
+  {
+    title: "コーラを作ろう！！",
+    sequence: ['T', 'L', 'J'],
+    targetRows: [1, 2],
+    check: (b) => checkStage4(b)
+  },
+  {
+    title: "カットを作ろう！",
+    sequence: ['I', 'O', 'S', 'T', 'I', 'L', 'T'],
+    targetRows: [2],
+    check: (b) => checkFinalStage(b)
+  }
+];
+
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-box');
@@ -295,153 +278,15 @@ let pieceCounter = 0;
 let dropCounter = 0;
 let lastTime = 0;
 let gameOver = false;
+let isUpdating = false;
 let currentStageIndex = 0;
-let animationId = null;
 
-function getPieceStats(b) {
-  let pieces = {};
-  for (let y = 0; y < 20; y++) {
-    for (let x = 0; x < 10; x++) {
-      let cell = b[y][x];
-      if (cell.id > 0) {
-        if (!pieces[cell.id]) {
-          pieces[cell.id] = { id: cell.id, type: cell.type, minX: x, maxX: x, minY: y, maxY: y };
-        }
-        let p = pieces[cell.id];
-        p.minX = Math.min(p.minX, x);
-        p.maxX = Math.max(p.maxX, x);
-        p.minY = Math.min(p.minY, y);
-        p.maxY = Math.max(p.maxY, y);
-      }
-    }
-  }
-  return Object.values(pieces).map(p => ({
-    id: p.id,
-    type: p.type,
-    minX: p.minX,
-    minY: p.minY,
-    width: p.maxX - p.minX + 1,
-    height: p.maxY - p.minY + 1
-  }));
-}
-
-const STAGES = [
-  {
-    title: "ミミを作ろう！",
-    sequence: ['I', 'I'],
-    targetRows: [17, 18], // 下から2,3段目
-    check: (b) => {
-      let stats = getPieceStats(b);
-      if (stats.length !== 2) return false;
-      const isVertical = stats.every(p => p.type === 'I' && p.width === 1 && p.height === 4);
-      if (!isVertical) return false;
-      // 条件: 隣接していないこと (X座標の差が1より大きい)
-      return Math.abs(stats[0].minX - stats[1].minX) > 1;
-    }
-  },
-  {
-    title: "オウを作ろう！",
-    sequence: ['I', 'I'],
-    targetRows: [17, 18], // 下から2,3段目
-    check: (b) => {
-      let stats = getPieceStats(b);
-      if (stats.length !== 2) return false;
-      const isVertical = stats.every(p => p.type === 'I' && p.width === 1 && p.height === 4);
-      if (!isVertical) return false;
-      // 条件: 横に隣接していること (X座標の差が1)、かつ高さ(Y)が同じであること
-      const isAdjacent = Math.abs(stats[0].minX - stats[1].minX) === 1;
-      const isSameHeight = stats[0].minY === stats[1].minY;
-      return isAdjacent && isSameHeight;
-    }
-  },
-  {
-    title: "コーラを作ろう！",
-    sequence: ['T', 'J', 'L'],
-    targetRows: [17, 18], // 下から2,3段目
-    check: (b) => {
-      let stats = getPieceStats(b);
-      if (stats.length !== 3) return false;
-      const pT = stats.find(p => p.type === 'T');
-      const pJ = stats.find(p => p.type === 'J');
-      const pL = stats.find(p => p.type === 'L');
-      if (!pT || !pJ || !pL) return false;
-      
-      const shapeCheck = (pT.width === 2 && pT.height === 3) &&
-                         (pJ.width === 3 && pJ.height === 2) &&
-                         (pL.width === 2 && pL.height === 3);
-      // 左から T, J, L の順番
-      const orderCheck = (pT.minX < pJ.minX) && (pJ.minX < pL.minX);
-      return shapeCheck && orderCheck;
-    }
-  },
-  {
-    title: "コーラを作ろう！！",
-    sequence: ['T', 'L', 'J'],
-    targetRows: [18, 19], // 下から1,2段目
-    check: (b, stageDef) => {
-      let stats = getPieceStats(b);
-      if (stats.length !== 3) return false;
-      const pT = stats.find(p => p.type === 'T');
-      const pL = stats.find(p => p.type === 'L');
-      const pJ = stats.find(p => p.type === 'J');
-      if (!pT || !pL || !pJ) return false;
-      
-      const shapeCheck = stats.every(p => p.width === 2 && p.height === 3);
-      const orderCheck = (pT.minX < pJ.minX) && (pJ.minX < pL.minX);
-      
-      if (!shapeCheck || !orderCheck) return false;
-
-      // Jミノが赤エリア（rows: 18, 19）に2マス入っているかチェック
-      let jBlocksInRed = 0;
-      for (let y = 18; y <= 19; y++) {
-        for (let x = 0; x < 10; x++) {
-          if (b[y][x].id === pJ.id) {
-            jBlocksInRed++;
-          }
-        }
-      }
-      
-      // Jミノが赤エリアにちょうど2マス入っていれば不正解
-      if (jBlocksInRed === 2) return false;
-
-      return true;
-    }
-  },
-  {
-    title: "カットを作ろう！",
-    sequence: ['I', 'O', 'S', 'T', 'I', 'L', 'T'],
-    targetRows: [18], // 下から2段目
-    check: (b) => {
-      const targetPattern = [
-        [0,0,0,0,0,0,0,0,1,0],
-        [0,1,0,0,0,0,1,0,1,1],
-        [1,1,0,1,1,1,0,1,1,0],
-        [0,1,0,0,1,0,1,1,1,1] 
-      ];
-      // 上部16行は完全に空であること
-      for (let i = 0; i < 16; i++) {
-        for (let j = 0; j < 10; j++) {
-          if (b[i][j].color !== 0) return false;
-        }
-      }
-      // 下部4行が指定パターンと完全一致すること
-      for (let i = 0; i < 4; i++) {
-        for (let j = 0; j < 10; j++) {
-          let hasBlock = b[16+i][j].color !== 0;
-          let shouldHave = targetPattern[i][j] === 1;
-          if (hasBlock !== shouldHave) return false;
-        }
-      }
-      return true;
-    }
-  }
-];
-
+// ----- ロゴ描画 -----
 function drawLogoMino(id, type, color, scale) {
   const c = document.getElementById(id);
   const cx = c.getContext('2d');
   const matrix = SHAPES[type].shape;
-  c.width = 25; c.height = 25;
+  c.width = 30; c.height = 30;
   cx.fillStyle = color;
   const offsetX = (c.width - matrix[0].length * scale) / 2;
   const offsetY = (c.height - matrix.length * scale) / 2;
@@ -453,51 +298,55 @@ function drawLogoMino(id, type, color, scale) {
     });
   });
 }
-drawLogoMino('logo-S', 'S', '#00ff00', 7);
-drawLogoMino('logo-L', 'L', '#ffa500', 7);
-drawLogoMino('logo-I', 'I', '#00ffff', 7);
-drawLogoMino('logo-T', 'T', '#800080', 7);
+drawLogoMino('logo-S', 'S', '#00ff00', 8);
+drawLogoMino('logo-L', 'L', '#ffa500', 8);
+drawLogoMino('logo-I', 'I', '#00ffff', 8);
+drawLogoMino('logo-T', 'T', '#800080', 8);
 
-function initStage() {
-  if (animationId) {
-    cancelAnimationFrame(animationId);
-    animationId = null;
-  }
-  
+// ----- ゲーム制御 -----
+function initStage(stageIndex) {
+  currentStageIndex = stageIndex;
   const stage = STAGES[currentStageIndex];
-  document.getElementById('riddle-title').innerText = `STAGE ${currentStageIndex + 1} / ${STAGES.length}`;
+  document.getElementById('riddle-title').innerText = `STAGE ${currentStageIndex + 1}`;
   document.getElementById('riddle-text').innerText = stage.title;
   
-  // 盤面をクリアなオブジェクトの配列で初期化
-  board = Array.from({length: 20}, () => Array.from({length: 10}, () => ({color: 0, id: 0, type: ''})));
+  board = Array.from({length: 20}, () => Array(10).fill(null).map(() => ({color: 0, id: 0})));
   sequenceIndex = 0;
   pieceCounter = 0;
   dropCounter = 0;
   gameOver = false;
   
+  // 赤いエリアの表示位置を「top」計算でピクセル単位で正確に合わせる
   const targetArea = document.getElementById('target-area');
   const maxRow = Math.max(...stage.targetRows);
   const minRow = Math.min(...stage.targetRows);
   const rowsCount = maxRow - minRow + 1;
+  
   targetArea.style.display = 'block';
-  targetArea.style.height = `${rowsCount * BLOCK_SIZE}px`;
-  targetArea.style.top = `${minRow * BLOCK_SIZE}px`;
+  targetArea.style.bottom = 'auto'; // 古いbottom指定を解除
+  
+  // top: (20 - maxRow) * 20 + 2(border)
+  targetArea.style.top = `${(20 - maxRow) * BLOCK_SIZE + 2}px`;
+  
+  // 下方向に少し広げてミノの下端をすっぽり覆うように調整 (+2px)
+  targetArea.style.height = `${rowsCount * BLOCK_SIZE + 2}px`;
 
   hideMessage();
   spawnPiece();
 
-  lastTime = performance.now();
-  update();
+  if (!isUpdating) {
+    lastTime = performance.now();
+    update();
+  }
 }
 
 function spawnPiece() {
   if (sequenceIndex >= STAGES[currentStageIndex].sequence.length) {
-    checkWinCondition();
+    checkWin();
     return;
   }
   const type = STAGES[currentStageIndex].sequence[sequenceIndex++];
   pieceCounter++;
-  
   currentPiece = {
     type: type,
     id: pieceCounter,
@@ -507,9 +356,9 @@ function spawnPiece() {
   currentX = Math.floor((10 - currentPiece.matrix[0].length) / 2);
   currentY = 0;
   
-  if (collide(board, currentPiece, currentX, currentY)) {
+  if (collide(board, currentPiece)) {
     gameOver = true;
-    showMessage("失敗... ブロックが上限に達しました。", "", false, null);
+    showMessage("何かが違うようです…", false);
   }
   drawNext();
 }
@@ -525,10 +374,9 @@ function drawNext() {
       const nextType = stage.sequence[idx];
       const matrix = SHAPES[nextType].shape;
       const color = SHAPES[nextType].color;
-      const scale = 9;
-      
+      const scale = 10;
       const offsetX = (nextCanvas.width - matrix[0].length * scale) / 2;
-      const offsetY = i * 50 + (50 - matrix.length * scale) / 2;
+      const offsetY = i * 60 + (60 - matrix.length * scale) / 2;
       
       nextCtx.fillStyle = color;
       matrix.forEach((row, y) => {
@@ -542,17 +390,16 @@ function drawNext() {
   }
 }
 
-function collide(b, p, px = currentX, py = currentY) {
+// ゴースト・壁抜け対策を含めた衝突判定
+function collide(b, p, testX = currentX, testY = currentY) {
   const m = p.matrix;
   for (let y = 0; y < m.length; ++y) {
     for (let x = 0; x < m[y].length; ++x) {
       if (m[y][x] !== 0) {
-        const targetX = x + px;
-        const targetY = y + py;
-        // 壁または床に到達したかチェック (突き抜け防止)
-        if (targetX < 0 || targetX >= 10 || targetY >= 20) return true;
-        // 既存ブロックと衝突したかチェック
-        if (targetY >= 0 && b[targetY][targetX] && b[targetY][targetX].color !== 0) return true;
+        if (testY + y >= 20 || testX + x < 0 || testX + x >= 10 || 
+           (b[testY + y] && b[testY + y][testX + x].color !== 0)) {
+          return true;
+        }
       }
     }
   }
@@ -563,22 +410,10 @@ function merge(b, p) {
   p.matrix.forEach((row, y) => {
     row.forEach((value, x) => {
       if (value !== 0) {
-        b[y + currentY][x + currentX] = { color: p.colorIndex, id: p.id, type: p.type };
+        b[y + currentY][x + currentX] = { color: p.colorIndex, id: p.id };
       }
     });
   });
-}
-
-function clearLines() {
-  outer: for (let y = board.length - 1; y >= 0; --y) {
-    for (let x = 0; x < board[y].length; ++x) {
-      if (board[y][x].color === 0) continue outer;
-    }
-    const row = board.splice(y, 1)[0];
-    const newRow = Array.from({length: 10}, () => ({color: 0, id: 0, type: ''}));
-    board.unshift(newRow);
-    ++y;
-  }
 }
 
 function rotate(m) {
@@ -586,21 +421,21 @@ function rotate(m) {
 }
 
 function playerRotate() {
-  if (gameOver || !currentPiece) return;
+  if (gameOver) return;
   const orig = currentPiece.matrix;
   currentPiece.matrix = rotate(currentPiece.matrix);
-  if (collide(board, currentPiece, currentX, currentY)) currentPiece.matrix = orig;
+  if (collide(board, currentPiece)) currentPiece.matrix = orig;
 }
 
 function playerMove(dir) {
-  if (gameOver || !currentPiece) return;
+  if (gameOver) return;
   if (!collide(board, currentPiece, currentX + dir, currentY)) {
     currentX += dir;
   }
 }
 
 function playerDrop() {
-  if (gameOver || !currentPiece) return;
+  if (gameOver) return;
   if (!collide(board, currentPiece, currentX, currentY + 1)) {
     currentY++;
   } else {
@@ -612,7 +447,7 @@ function playerDrop() {
 }
 
 function hardDrop() {
-  if (gameOver || !currentPiece) return;
+  if (gameOver) return;
   while (!collide(board, currentPiece, currentX, currentY + 1)) {
     currentY++;
   }
@@ -622,57 +457,169 @@ function hardDrop() {
   dropCounter = 0;
 }
 
-function getGhostY() {
-  if (!currentPiece) return currentY;
-  let gy = currentY;
-  while (!collide(board, currentPiece, currentX, gy + 1)) {
-    gy++;
+function clearLines() {
+  outer: for (let y = board.length - 1; y >= 0; --y) {
+    for (let x = 0; x < board[y].length; ++x) {
+      if (board[y][x].color === 0) continue outer;
+    }
+    const row = board.splice(y, 1)[0];
+    const newRow = Array.from({length: 10}, () => ({color: 0, id: 0}));
+    board.unshift(newRow);
+    ++y;
   }
-  return gy;
 }
 
-function checkWinCondition() {
+// ----- 判定ロジック -----
+function getPieceStats(b) {
+  let pieces = {};
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 10; x++) {
+      let cell = b[y][x];
+      if (cell.id > 0) {
+        if (!pieces[cell.id]) {
+          pieces[cell.id] = { minX: x, maxX: x, minY: y, maxY: y, count: 0 };
+        }
+        let p = pieces[cell.id];
+        p.minX = Math.min(p.minX, x);
+        p.maxX = Math.max(p.maxX, x);
+        p.minY = Math.min(p.minY, y);
+        p.maxY = Math.max(p.maxY, y);
+        p.count++;
+      }
+    }
+  }
+  return Object.keys(pieces).map(id => {
+    let p = pieces[id];
+    return {
+      id: parseInt(id),
+      minX: p.minX,
+      maxX: p.maxX,
+      minY: p.minY,
+      width: p.maxX - p.minX + 1,
+      height: p.maxY - p.minY + 1
+    };
+  }).sort((a, b) => a.id - b.id);
+}
+
+function checkStage1(b) {
+  let stats = getPieceStats(b);
+  if (stats.length !== 2) return false;
+  // 縦4マス、かつ X座標が離れている（隣接していない）
+  const isVertical = stats.every(p => p.width === 1 && p.height === 4);
+  const isSeparated = Math.abs(stats[0].minX - stats[1].minX) > 1;
+  return isVertical && isSeparated;
+}
+
+function checkStage2(b) {
+  let stats = getPieceStats(b);
+  if (stats.length !== 2) return false;
+  // 縦4マス、かつ 横にぴったり隣接、かつ 高さ(Y)が揃っている
+  const isVertical = stats.every(p => p.width === 1 && p.height === 4);
+  const isAdjacent = Math.abs(stats[0].minX - stats[1].minX) === 1;
+  const isSameHeight = stats[0].minY === stats[1].minY;
+  return isVertical && isAdjacent && isSameHeight;
+}
+
+function checkStage3(b) {
+  let stats = getPieceStats(b);
+  if (stats.length !== 3) return false;
+  const pT = stats[0], pJ = stats[1], pL = stats[2];
+  const shapeCheck = (pT.width===2 && pT.height===3) &&
+                     (pJ.width===3 && pJ.height===2) &&
+                     (pL.width===2 && pL.height===3);
+  const orderCheck = (pT.minX < pJ.minX) && (pJ.minX < pL.minX);
+  return shapeCheck && orderCheck;
+}
+
+function checkStage4(b) {
+  let stats = getPieceStats(b);
+  if (stats.length !== 3) return false;
+  const pT = stats[0], pL = stats[1], pJ = stats[2];
+  const shapeCheck = stats.every(p => p.width === 2 && p.height === 3);
+  const orderCheck = (pT.minX < pL.minX) && (pL.minX < pJ.minX);
+  
+  if (!(shapeCheck && orderCheck)) return false;
+
+  // Jミノが赤エリア（下から1, 2段目 = Y:18, 19）に2マスだけ入っていたら不正解
+  let jInRed = 0;
+  for (let y = 18; y < 20; y++) {
+    for (let x = pJ.minX; x <= pJ.maxX; x++) {
+      if (b[y][x].id === pJ.id) jInRed++;
+    }
+  }
+  if (jInRed === 2) return false;
+
+  return true;
+}
+
+function checkFinalStage(b) {
+  const targetPattern1 = [
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,1,0,0,0,0,0,1,0,0],
+    [1,1,0,1,1,1,1,1,1,0],
+    [0,1,0,0,1,0,1,1,1,1]
+  ];
+  // 右下のIミノが左に1マスずれたパターン
+  const targetPattern2 = [
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,1,0,0,0,0,1,0,0,0],
+    [1,1,0,1,1,1,1,1,1,0],
+    [0,1,0,0,1,0,1,1,1,1]
+  ];
+  
+  for (let i = 0; i < 16; i++) {
+    for (let j = 0; j < 10; j++) {
+      if (b[i][j].color !== 0) return false;
+    }
+  }
+  
+  let match1 = true;
+  let match2 = true;
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 10; j++) {
+      let hasBlock = b[16+i][j].color !== 0;
+      if (hasBlock !== (targetPattern1[i][j] === 1)) match1 = false;
+      if (hasBlock !== (targetPattern2[i][j] === 1)) match2 = false;
+    }
+  }
+  return match1 || match2;
+}
+
+function checkWin() {
   gameOver = true;
   const stage = STAGES[currentStageIndex];
-  if (stage.check(board, stage)) {
+  if (stage.check(board)) {
     if (currentStageIndex === STAGES.length - 1) {
-      showMessage("🎉 全ての謎が解けました！ 🎉\n\n見事な推察力です！", "", true, null);
+      showMessage("🎉 全ての謎が解けました！", true);
     } else {
-      showMessage("正解！\n見事な配置です。", "次のステージへ", true, () => {
-        currentStageIndex++;
-        initStage();
-      });
+      showMessage("CLEAR! 次の謎へ...", true);
     }
   } else {
-    // 失敗時はボタンなし（リセットボタンを押させる）
-    showMessage("何かが違うようです…", "", false, null);
+    showMessage("何かが違うようです…", false);
   }
 }
 
-function showMessage(text, btnText, isClear, callback) {
+// ----- UI・描画 -----
+function showMessage(text, isClear) {
   const win = document.getElementById('message-window');
   const btn = document.getElementById('message-btn');
   document.getElementById('message-text').innerText = text;
-  document.getElementById('message-text').style.color = isClear ? "#2ecc71" : "#e74c3c";
+  document.getElementById('message-text').style.color = isClear ? "#00ff00" : "#ff3333";
   
-  if (isClear) {
-    if (currentStageIndex === STAGES.length - 1) {
-      btn.style.display = 'none';
-    } else {
-      btn.style.display = 'inline-block';
-      btn.innerText = btnText;
-      btn.onclick = () => {
-        win.style.display = 'none';
-        if(callback) callback();
-      };
-    }
-  } else {
-    // 不正解の場合はボタンを隠す
+  if (isClear && currentStageIndex === STAGES.length - 1) {
     btn.style.display = 'none';
+  } else if (!isClear) {
+    btn.style.display = 'none'; // 失敗時はボタンを非表示
+  } else {
+    btn.style.display = 'inline-block';
+    btn.innerText = "次のステージへ";
+    btn.onclick = () => {
+      currentStageIndex++;
+      initStage(currentStageIndex);
+    };
   }
   win.style.display = 'block';
 }
-
 function hideMessage() {
   document.getElementById('message-window').style.display = 'none';
 }
@@ -692,10 +639,12 @@ function draw() {
   });
 
   if (currentPiece && !gameOver) {
-    // プレビュー(ゴースト)ピース描画
-    let ghostY = getGhostY();
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = COLORS[currentPiece.colorIndex];
+    // ゴーストピースの描画
+    let ghostY = currentY;
+    while (!collide(board, currentPiece, currentX, ghostY + 1)) {
+      ghostY++;
+    }
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // 半透明
     currentPiece.matrix.forEach((row, y) => {
       row.forEach((value, x) => {
         if (value !== 0) {
@@ -703,9 +652,8 @@ function draw() {
         }
       });
     });
-    ctx.globalAlpha = 1.0;
 
-    // 現在操作中のピース描画
+    // 現在のピースの描画
     ctx.fillStyle = COLORS[currentPiece.colorIndex];
     currentPiece.matrix.forEach((row, y) => {
       row.forEach((value, x) => {
@@ -720,8 +668,10 @@ function draw() {
 function update(time = 0) {
   if (gameOver) {
     draw();
+    isUpdating = false;
     return;
   }
+  isUpdating = true;
   const deltaTime = time - lastTime;
   lastTime = time;
   dropCounter += deltaTime;
@@ -731,27 +681,25 @@ function update(time = 0) {
   }
 
   draw();
-  animationId = requestAnimationFrame(update);
+  requestAnimationFrame(update);
 }
 
-const bindInput = (id, fn) => {
+// ----- タッチ・キー操作 -----
+const bindTouch = (id, fn) => {
   const el = document.getElementById(id);
-  el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); }, { passive: false });
-  el.addEventListener('mousedown', (e) => { e.preventDefault(); fn(); });
+  el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); });
+  el.addEventListener('click', (e) => { fn(); });
 };
 
-bindInput('btn-left', () => playerMove(-1));
-bindInput('btn-right', () => playerMove(1));
-bindInput('btn-rotate', () => playerRotate());
-bindInput('btn-down', () => playerDrop());
-bindInput('btn-drop', () => hardDrop());
+bindTouch('btn-left', () => playerMove(-1));
+bindTouch('btn-right', () => playerMove(1));
+bindTouch('btn-rotate', () => playerRotate());
+bindTouch('btn-down', () => playerDrop());
+bindTouch('btn-drop', () => hardDrop());
 
-// サイドパネルのリセットボタン処理
-bindInput('btn-reset-stage', () => initStage());
-bindInput('btn-reset-all', () => {
-  currentStageIndex = 0;
-  initStage();
-});
+// リセットボタン
+bindTouch('btn-reset-stage', () => initStage(currentStageIndex));
+bindTouch('btn-reset-all', () => initStage(0));
 
 document.addEventListener('keydown', event => {
   if (gameOver) return;
@@ -762,9 +710,8 @@ document.addEventListener('keydown', event => {
   else if (event.keyCode === 32) hardDrop();
 });
 
-window.onload = function() {
-  initStage();
-};
+// ゲームスタート
+initStage(0);
 </script>
 </body>
 </html>
