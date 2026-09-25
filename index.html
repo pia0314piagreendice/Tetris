@@ -58,17 +58,18 @@
   #game-layout {
     display: flex;
     gap: 10px;
-    align-items: flex-start;
+    align-items: flex-end; /* 下端を揃える */
   }
 
   #board-container {
     position: relative;
+    height: 404px; /* 400px + border 4px */
   }
   canvas#board {
     background-color: #000;
     border: 2px solid #555;
     display: block;
-    box-sizing: content-box; /* 描画スケールのズレを防止 */
+    box-sizing: content-box;
   }
   
   /* 赤い判定エリア */
@@ -87,7 +88,17 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: flex-end; /* 中身を下寄せ */
     width: 70px;
+    height: 404px; /* 盤面と同じ高さ */
+  }
+  
+  #next-container {
+    margin-bottom: auto; /* NEXTを上部に押し上げる */
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   .next-label {
     font-size: 11px;
@@ -105,7 +116,6 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-top: 10px;
     width: 100%;
   }
   .btn-reset {
@@ -179,7 +189,6 @@
 </head>
 <body>
 
-<!-- SLIT ロゴ (各ミノを回転) -->
 <div id="title-logo">
   <canvas id="logo-S" class="title-mino" style="transform: rotate(-45deg);"></canvas>
   <canvas id="logo-L" class="title-mino" style="transform: rotate(90deg);"></canvas>
@@ -198,8 +207,10 @@
     <div id="target-area"></div>
   </div>
   <div id="side-panel">
-    <div class="next-label">NEXT</div>
-    <canvas id="next-box" width="60" height="180"></canvas>
+    <div id="next-container">
+      <div class="next-label">NEXT</div>
+      <canvas id="next-box" width="60" height="180"></canvas>
+    </div>
     <div id="reset-btns">
       <button class="btn-reset" id="btn-reset-stage">このステージ<br>リセット</button>
       <button class="btn-reset" id="btn-reset-all">ステージ１から<br>リセット</button>
@@ -281,7 +292,6 @@ let gameOver = false;
 let isUpdating = false;
 let currentStageIndex = 0;
 
-// ----- ロゴ描画 -----
 function drawLogoMino(id, type, color, scale) {
   const c = document.getElementById(id);
   const cx = c.getContext('2d');
@@ -303,7 +313,6 @@ drawLogoMino('logo-L', 'L', '#ffa500', 8);
 drawLogoMino('logo-I', 'I', '#00ffff', 8);
 drawLogoMino('logo-T', 'T', '#800080', 8);
 
-// ----- ゲーム制御 -----
 function initStage(stageIndex) {
   currentStageIndex = stageIndex;
   const stage = STAGES[currentStageIndex];
@@ -316,20 +325,17 @@ function initStage(stageIndex) {
   dropCounter = 0;
   gameOver = false;
   
-  // 赤いエリアの表示位置を「top」計算でピクセル単位で正確に合わせる
   const targetArea = document.getElementById('target-area');
   const maxRow = Math.max(...stage.targetRows);
   const minRow = Math.min(...stage.targetRows);
   const rowsCount = maxRow - minRow + 1;
   
   targetArea.style.display = 'block';
-  targetArea.style.bottom = 'auto'; // 古いbottom指定を解除
+  targetArea.style.bottom = 'auto';
   
-  // top: (20 - maxRow) * 20 + 2(border)
-  targetArea.style.top = `${(20 - maxRow) * BLOCK_SIZE + 2}px`;
-  
-  // 下方向に少し広げてミノの下端をすっぽり覆うように調整 (+2px)
-  targetArea.style.height = `${rowsCount * BLOCK_SIZE + 2}px`;
+  // 上部へ1px広げ、下部はそのまま
+  targetArea.style.top = `${(20 - maxRow) * BLOCK_SIZE + 1}px`;
+  targetArea.style.height = `${rowsCount * BLOCK_SIZE + 3}px`;
 
   hideMessage();
   spawnPiece();
@@ -390,7 +396,6 @@ function drawNext() {
   }
 }
 
-// ゴースト・壁抜け対策を含めた衝突判定
 function collide(b, p, testX = currentX, testY = currentY) {
   const m = p.matrix;
   for (let y = 0; y < m.length; ++y) {
@@ -469,7 +474,6 @@ function clearLines() {
   }
 }
 
-// ----- 判定ロジック -----
 function getPieceStats(b) {
   let pieces = {};
   for (let y = 0; y < 20; y++) {
@@ -504,7 +508,6 @@ function getPieceStats(b) {
 function checkStage1(b) {
   let stats = getPieceStats(b);
   if (stats.length !== 2) return false;
-  // 縦4マス、かつ X座標が離れている（隣接していない）
   const isVertical = stats.every(p => p.width === 1 && p.height === 4);
   const isSeparated = Math.abs(stats[0].minX - stats[1].minX) > 1;
   return isVertical && isSeparated;
@@ -513,7 +516,6 @@ function checkStage1(b) {
 function checkStage2(b) {
   let stats = getPieceStats(b);
   if (stats.length !== 2) return false;
-  // 縦4マス、かつ 横にぴったり隣接、かつ 高さ(Y)が揃っている
   const isVertical = stats.every(p => p.width === 1 && p.height === 4);
   const isAdjacent = Math.abs(stats[0].minX - stats[1].minX) === 1;
   const isSameHeight = stats[0].minY === stats[1].minY;
@@ -535,19 +537,28 @@ function checkStage4(b) {
   let stats = getPieceStats(b);
   if (stats.length !== 3) return false;
   const pT = stats[0], pL = stats[1], pJ = stats[2];
+  
+  // 各ミノの幅・高さの検証
   const shapeCheck = stats.every(p => p.width === 2 && p.height === 3);
+  // X座標の順番検証 (左から T, L, J)
   const orderCheck = (pT.minX < pL.minX) && (pL.minX < pJ.minX);
   
   if (!(shapeCheck && orderCheck)) return false;
 
-  // Jミノが赤エリア（下から1, 2段目 = Y:18, 19）に2マスだけ入っていたら不正解
-  let jInRed = 0;
+  // Jミノのブロックが赤エリア(Y=18, 19)にいくつ存在するか厳密にカウント
+  let jInRedCount = 0;
   for (let y = 18; y < 20; y++) {
-    for (let x = pJ.minX; x <= pJ.maxX; x++) {
-      if (b[y][x].id === pJ.id) jInRed++;
+    for (let x = 0; x < 10; x++) {
+      if (b[y][x].id === pJ.id) {
+        jInRedCount++;
+      }
     }
   }
-  if (jInRed === 2) return false;
+  
+  // ちょうど2マスだけ入っていたら不正解
+  if (jInRedCount === 2) {
+    return false;
+  }
 
   return true;
 }
@@ -559,7 +570,6 @@ function checkFinalStage(b) {
     [1,1,0,1,1,1,1,1,1,0],
     [0,1,0,0,1,0,1,1,1,1]
   ];
-  // 右下のIミノが左に1マスずれたパターン
   const targetPattern2 = [
     [0,0,0,0,0,0,0,0,0,0],
     [0,1,0,0,0,0,1,0,0,0],
@@ -592,14 +602,13 @@ function checkWin() {
     if (currentStageIndex === STAGES.length - 1) {
       showMessage("🎉 全ての謎が解けました！", true);
     } else {
-      showMessage("CLEAR! 次の謎へ...", true);
+      showMessage("CLEAR!", true);
     }
   } else {
     showMessage("何かが違うようです…", false);
   }
 }
 
-// ----- UI・描画 -----
 function showMessage(text, isClear) {
   const win = document.getElementById('message-window');
   const btn = document.getElementById('message-btn');
@@ -609,7 +618,7 @@ function showMessage(text, isClear) {
   if (isClear && currentStageIndex === STAGES.length - 1) {
     btn.style.display = 'none';
   } else if (!isClear) {
-    btn.style.display = 'none'; // 失敗時はボタンを非表示
+    btn.style.display = 'none';
   } else {
     btn.style.display = 'inline-block';
     btn.innerText = "次のステージへ";
@@ -620,6 +629,7 @@ function showMessage(text, isClear) {
   }
   win.style.display = 'block';
 }
+
 function hideMessage() {
   document.getElementById('message-window').style.display = 'none';
 }
@@ -628,7 +638,6 @@ function draw() {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // 盤面描画
   board.forEach((row, y) => {
     row.forEach((cell, x) => {
       if (cell.color !== 0) {
@@ -639,12 +648,11 @@ function draw() {
   });
 
   if (currentPiece && !gameOver) {
-    // ゴーストピースの描画
     let ghostY = currentY;
     while (!collide(board, currentPiece, currentX, ghostY + 1)) {
       ghostY++;
     }
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // 半透明
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
     currentPiece.matrix.forEach((row, y) => {
       row.forEach((value, x) => {
         if (value !== 0) {
@@ -653,7 +661,6 @@ function draw() {
       });
     });
 
-    // 現在のピースの描画
     ctx.fillStyle = COLORS[currentPiece.colorIndex];
     currentPiece.matrix.forEach((row, y) => {
       row.forEach((value, x) => {
@@ -684,7 +691,6 @@ function update(time = 0) {
   requestAnimationFrame(update);
 }
 
-// ----- タッチ・キー操作 -----
 const bindTouch = (id, fn) => {
   const el = document.getElementById(id);
   el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); });
@@ -697,7 +703,6 @@ bindTouch('btn-rotate', () => playerRotate());
 bindTouch('btn-down', () => playerDrop());
 bindTouch('btn-drop', () => hardDrop());
 
-// リセットボタン
 bindTouch('btn-reset-stage', () => initStage(currentStageIndex));
 bindTouch('btn-reset-all', () => initStage(0));
 
@@ -710,7 +715,6 @@ document.addEventListener('keydown', event => {
   else if (event.keyCode === 32) hardDrop();
 });
 
-// ゲームスタート
 initStage(0);
 </script>
 </body>
