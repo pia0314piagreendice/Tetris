@@ -240,6 +240,145 @@ const SHAPES = {
 };
 const COLORS = [null, '#00ffff', '#0000ff', '#ffa500', '#ffff00', '#00ff00', '#800080', '#ff0000'];
 
+// ==========================================
+// 💡 ご提案いただいた「最強の隣接エッジ判定エンジン」
+// ==========================================
+
+// 盤面上の指定エリアから、縦棒(9本)と横棒(10本)の繋がりを抽出する
+function getAdjacency(b, startY, endY) {
+  let vBars = []; // 左右の繋がり (幅9)
+  let hBars = []; // 上下の繋がり (幅10)
+  for (let y = startY; y <= endY; y++) {
+    let v = [];
+    for (let x = 0; x < 9; x++) {
+      // 同じIDのブロックが隣接していれば「線(1)」とする
+      v.push((b[y][x].id !== 0 && b[y][x].id === b[y][x+1].id) ? 1 : 0);
+    }
+    vBars.push(v);
+    
+    if (y < endY) {
+      let h = [];
+      for (let x = 0; x < 10; x++) {
+        h.push((b[y][x].id !== 0 && b[y][x].id === b[y+1][x].id) ? 1 : 0);
+      }
+      hBars.push(h);
+    }
+  }
+  return { vBars, hBars };
+}
+
+// 簡易文字列マップから、期待される縦棒・横棒のパターンを生成する
+function compilePattern(mapArr) {
+  let vBars = [];
+  let hBars = [];
+  let rows = mapArr.length;
+  for (let y = 0; y < rows; y++) {
+    let v = [];
+    for (let x = 0; x < 9; x++) {
+      let c1 = mapArr[y][x];
+      let c2 = mapArr[y][x+1];
+      v.push((c1 !== '0' && c1 !== ' ' && c1 === c2) ? 1 : 0);
+    }
+    vBars.push(v);
+    
+    if (y < rows - 1) {
+      let h = [];
+      for (let x = 0; x < 10; x++) {
+        let c1 = mapArr[y][x];
+        let c2 = mapArr[y+1][x];
+        h.push((c1 !== '0' && c1 !== ' ' && c1 === c2) ? 1 : 0);
+      }
+      hBars.push(h);
+    }
+  }
+  return { vBars, hBars };
+}
+
+// 実際の盤面と、パターンのどれかが一致するかを検証（左右の横移動も自動追従）
+function matchAdjacency(board, targetRows, patterns) {
+  let minRow = Math.min(...targetRows);
+  let maxRow = Math.max(...targetRows);
+  let startY = 20 - maxRow;
+  let endY = 20 - minRow;
+  
+  let actual = getAdjacency(board, startY, endY);
+  
+  for (let pMap of patterns) {
+    let pHeight = pMap.length;
+    let pWidth = Math.max(...pMap.map(r => r.length));
+    
+    // 左右にシフトさせて全通りチェックするため、どこで作っても正解になります！
+    for (let shift = 0; shift <= 10 - pWidth; shift++) {
+      let shiftedMap = [];
+      for (let y = 0; y < pHeight; y++) {
+        let rowStr = "0".repeat(shift) + pMap[y];
+        rowStr = rowStr.padEnd(10, '0');
+        shiftedMap.push(rowStr);
+      }
+      
+      let expected = compilePattern(shiftedMap);
+      
+      let match = true;
+      for (let y = 0; y < actual.vBars.length; y++) {
+        for (let x = 0; x < 9; x++) {
+          if (actual.vBars[y][x] !== expected.vBars[y][x]) { match = false; break; }
+        }
+        if (!match) break;
+      }
+      if (!match) continue;
+      
+      for (let y = 0; y < actual.hBars.length; y++) {
+        for (let x = 0; x < 10; x++) {
+          if (actual.hBars[y][x] !== expected.hBars[y][x]) { match = false; break; }
+        }
+        if (!match) break;
+      }
+      
+      if (match) return true;
+    }
+  }
+  return false;
+}
+
+// ==========================================
+// 🧩 各ステージの正解パターン定義 (同じ文字が隣り合うと線になる)
+// ==========================================
+
+// ステージ3 & 4 (コーラ)
+// 隙間や組み方のバリエーションをすべて網羅
+const COLA_PATTERNS = [
+  ["0T0000L", "0TT0JJLL"], // 画像通りの構成
+  ["T0000L",  "TT0JJLL"],  // 壁ピッタリ版
+  ["0T000L",  "0TT0JJLL"], // Jとの隙間が狭い版
+  ["T000L",   "TT0JJLL"],  
+  ["0T00L",   "0TTJJLL"],  // 隙間なし版
+  ["T00L",    "TTJJLL"]    
+];
+
+// ステージ5 (カット)
+const STAGE5_PATTERNS = [
+  ["0T0TTT0OO", "0TT0T00OO"], // ご指定の 縦T, 横T, O の並び
+  ["T00TTT0OO", "TT00T00OO"], // 壁寄せ版
+  ["TTT0TTT0OO", "0T000T00OO"], // Tが両方横になっている場合
+  ["0T00TTT0OO", "0TTT0T00OO"]
+];
+
+// ステージ6 (カット大文字)
+const STAGE6_PATTERNS = [
+  ["0T0TTT0OO", "0TT0T00ZZ"], // Zの上にOが乗る指定ギミック
+  ["T00TTT0OO", "TT00T00ZZ"], 
+  ["TTT0TTT0OO", "0T000T00ZZ"], 
+  ["0T00TTT0OO", "0TTT0T00ZZ"]
+];
+
+// EXステージ (切ル)
+const STAGE_EX_PATTERNS = [
+  [
+    "GGBBBXXXK", // 提示された画像の右端1マスを空けた完璧な配列構成
+    "GGXXXBBBK"
+  ]
+];
+
 const STAGES = [
   {
     title: "ミミを作ろう！",
@@ -257,103 +396,35 @@ const STAGES = [
     title: "コーラを作ろう！",
     sequence: ['T', 'J', 'L'],
     targetRows: [2, 3],
-    check: (b) => checkMatch(extractSilhouette(b), colaPatterns)
+    check: (b) => matchAdjacency(b, [2, 3], COLA_PATTERNS)
   },
   {
     title: "コーラを作ろう！！",
     sequence: ['T', 'L', 'J'],
     targetRows: [1, 2],
-    check: (b) => checkMatch(extractSilhouette(b), colaPatterns)
+    check: (b) => matchAdjacency(b, [1, 2], COLA_PATTERNS)
   },
   {
     title: "カットを作ろう！",
     sequence: ['I', 'I', 'O', 'T', 'T'],
     targetRows: [2, 3],
-    check: (b) => checkMatch(extractSilhouette(b), cutSmallPatterns)
+    check: (b) => matchAdjacency(b, [2, 3], STAGE5_PATTERNS)
   },
   {
     title: "カットを大文字で作ろう！",
     sequence: ['I', 'I', 'Z', 'O', 'T', 'T'],
     targetRows: [1, 2],
-    check: (b) => checkMatch(extractSilhouette(b), cutBigPatterns)
+    check: (b) => matchAdjacency(b, [1, 2], STAGE6_PATTERNS)
   },
   {
     title: "切ルを作ろう！",
     sequence: ['S', 'S', 'J', 'L', 'J', 'L', 'J', 'J', 'L', 'T', 'I', 'S', 'J'],
     targetRows: [2, 3], 
-    check: (b) => checkMatch(extractSilhouette(b), exPatterns)
+    check: (b) => matchAdjacency(b, [2, 3], STAGE_EX_PATTERNS)
   }
 ];
 
-// ==========================================
-// 💡 全ステージ共通：最強のシルエット判定用パターン集
-// ==========================================
-
-// ステージ3 & 4 (コーラ)
-const colaPatterns = [
-  [ // ユーザー様の完璧な画像(右下L)のシルエット
-    [0, 1, 0, 0, 0, 1, 0],
-    [1, 1, 1, 0, 0, 1, 0],
-    [0, 1, 1, 1, 1, 1, 1]
-  ],
-  [ // 左上Lのパターン
-    [0, 1, 0, 0, 0, 1, 1],
-    [1, 1, 1, 0, 0, 0, 1],
-    [0, 1, 1, 1, 1, 0, 1]
-  ]
-];
-
-// ステージ5 (カット小文字)
-const cutSmallPatterns = [
-  [ // 横Tが下向き
-    [0, 1, 0, 0, 0, 0, 0],
-    [1, 1, 1, 1, 1, 1, 1],
-    [0, 1, 0, 1, 0, 1, 1]
-  ],
-  [ // 横Tが上向き
-    [0, 1, 0, 0, 0, 0, 0],
-    [1, 1, 0, 1, 0, 1, 1],
-    [0, 1, 1, 1, 1, 1, 1]
-  ]
-];
-
-// ステージ6 (カット大文字)
-const cutBigPatterns = [
-  [ // 隙間なし基準形
-    [0,1,0,0,0,0,0,1,0,0],
-    [1,1,0,1,1,1,1,1,1,0],
-    [0,1,0,0,1,0,1,1,1,1]
-  ],
-  [ // Iが1マス右ズレ
-    [0,1,0,0,0,0,0,1,0,0],
-    [1,1,0,1,1,1,1,1,1,0],
-    [0,1,0,0,1,1,1,1,1,0]
-  ],
-  [ // ユーザー画像1
-    [0,0,0,0,0,0,0,0,1,0], 
-    [0,1,0,0,0,1,1,1,1,1], 
-    [1,1,0,1,1,0,1,1,0,1], 
-    [0,1,0,1,1,1,1,1,0,0]
-  ],
-  [ // ユーザー画像2
-    [0,0,0,0,0,0,0,0,1,0], 
-    [0,1,0,0,0,0,1,1,1,1], 
-    [1,1,0,1,1,0,0,1,1,1], 
-    [0,1,0,1,0,1,1,1,1,0]
-  ]
-];
-
-// EXステージ (切ル)
-const exPatterns = [
-  [
-    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0], 
-    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0], 
-    [1, 1, 1, 1, 1, 0, 0, 0, 1, 1], 
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1], 
-    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]  
-  ]
-];
-
+// 以下、UI・描画処理等
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-box');
@@ -560,59 +631,7 @@ function clearLines() {
   }
 }
 
-// ==========================================
-// 汎用判定ロジック (シルエット抽出＆マッチング)
-// ==========================================
-
-// 余白を切り落としてブロックの形だけを配列化する
-function extractSilhouette(b) {
-  let minX = 10, maxX = -1, minY = 20, maxY = -1;
-  for (let y = 0; y < 20; y++) {
-    for (let x = 0; x < 10; x++) {
-      if (b[y][x].color !== 0) {
-        minX = Math.min(minX, x);
-        maxX = Math.max(maxX, x);
-        minY = Math.min(minY, y);
-        maxY = Math.max(maxY, y);
-      }
-    }
-  }
-  if (maxX === -1) return null; 
-  
-  let silhouette = [];
-  for (let y = minY; y <= maxY; y++) {
-    let row = [];
-    for (let x = minX; x <= maxX; x++) {
-      row.push(b[y][x].color !== 0 ? 1 : 0);
-    }
-    silhouette.push(row);
-  }
-  return silhouette;
-}
-
-// 用意した正解パターン群の中に一致するものがあるかチェック
-function checkMatch(extracted, targetPatterns) {
-  if (!extracted) return false;
-  for (let pattern of targetPatterns) {
-    if (extracted.length !== pattern.length) continue;
-    if (extracted[0].length !== pattern[0].length) continue;
-    
-    let isMatch = true;
-    for (let y = 0; y < extracted.length; y++) {
-      for (let x = 0; x < extracted[y].length; x++) {
-        if (extracted[y][x] !== pattern[y][x]) {
-          isMatch = false;
-          break;
-        }
-      }
-      if (!isMatch) break;
-    }
-    if (isMatch) return true;
-  }
-  return false;
-}
-
-// ステージ1と2は「ブロック同士が離れているか」などの空間認識が必要なため元のロジックを保持
+// ステージ1と2用（離れているか等の判定）
 function getPieceStats(b) {
   let pieces = {};
   for (let y = 0; y < 20; y++) {
