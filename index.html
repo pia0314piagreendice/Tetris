@@ -578,6 +578,7 @@ function checkFinalStage(b) {
     [0,1,0,0,1,0,1,1,1,1]
   ];
   
+  // 上から16行（Y=0〜15）にブロックが1つでも残っていたら失敗
   for (let i = 0; i < 16; i++) {
     for (let j = 0; j < 10; j++) {
       if (b[i][j].color !== 0) return false;
@@ -586,13 +587,16 @@ function checkFinalStage(b) {
   
   let match1 = true;
   let match2 = true;
+  // 下から4行（Y=16〜19）の形状判定
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 10; j++) {
+      // 色やIDは無視し、「ブロックがあるか(color !== 0)」だけで判定
       let hasBlock = b[16+i][j].color !== 0;
       if (hasBlock !== (targetPattern1[i][j] === 1)) match1 = false;
       if (hasBlock !== (targetPattern2[i][j] === 1)) match2 = false;
     }
   }
+  
   return match1 || match2;
 }
 
