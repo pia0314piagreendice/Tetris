@@ -257,32 +257,101 @@ const STAGES = [
     title: "コーラを作ろう！",
     sequence: ['T', 'J', 'L'],
     targetRows: [2, 3],
-    check: (b) => checkStage3(b)
+    check: (b) => checkMatch(extractSilhouette(b), colaPatterns)
   },
   {
     title: "コーラを作ろう！！",
     sequence: ['T', 'L', 'J'],
     targetRows: [1, 2],
-    check: (b) => checkStage4(b)
+    check: (b) => checkMatch(extractSilhouette(b), colaPatterns)
   },
   {
     title: "カットを作ろう！",
     sequence: ['I', 'I', 'O', 'T', 'T'],
     targetRows: [2, 3],
-    check: (b) => checkStage5(b)
+    check: (b) => checkMatch(extractSilhouette(b), cutSmallPatterns)
   },
   {
     title: "カットを大文字で作ろう！",
     sequence: ['I', 'I', 'Z', 'O', 'T', 'T'],
     targetRows: [1, 2],
-    check: (b) => checkStage6(b)
+    check: (b) => checkMatch(extractSilhouette(b), cutBigPatterns)
   },
   {
-    title: "切ルを作ろう！", // EXステージ
+    title: "切ルを作ろう！",
     sequence: ['S', 'S', 'J', 'L', 'J', 'L', 'J', 'J', 'L', 'T', 'I', 'S', 'J'],
     targetRows: [2, 3], 
-    check: (b) => checkStageEX(b)
+    check: (b) => checkMatch(extractSilhouette(b), exPatterns)
   }
+];
+
+// ==========================================
+// 💡 全ステージ共通：最強のシルエット判定用パターン集
+// ==========================================
+
+// ステージ3 & 4 (コーラ)
+const colaPatterns = [
+  [ // ユーザー様の完璧な画像(右下L)のシルエット
+    [0, 1, 0, 0, 0, 1, 0],
+    [1, 1, 1, 0, 0, 1, 0],
+    [0, 1, 1, 1, 1, 1, 1]
+  ],
+  [ // 左上Lのパターン
+    [0, 1, 0, 0, 0, 1, 1],
+    [1, 1, 1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 1, 0, 1]
+  ]
+];
+
+// ステージ5 (カット小文字)
+const cutSmallPatterns = [
+  [ // 横Tが下向き
+    [0, 1, 0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1, 1, 1],
+    [0, 1, 0, 1, 0, 1, 1]
+  ],
+  [ // 横Tが上向き
+    [0, 1, 0, 0, 0, 0, 0],
+    [1, 1, 0, 1, 0, 1, 1],
+    [0, 1, 1, 1, 1, 1, 1]
+  ]
+];
+
+// ステージ6 (カット大文字)
+const cutBigPatterns = [
+  [ // 隙間なし基準形
+    [0,1,0,0,0,0,0,1,0,0],
+    [1,1,0,1,1,1,1,1,1,0],
+    [0,1,0,0,1,0,1,1,1,1]
+  ],
+  [ // Iが1マス右ズレ
+    [0,1,0,0,0,0,0,1,0,0],
+    [1,1,0,1,1,1,1,1,1,0],
+    [0,1,0,0,1,1,1,1,1,0]
+  ],
+  [ // ユーザー画像1
+    [0,0,0,0,0,0,0,0,1,0], 
+    [0,1,0,0,0,1,1,1,1,1], 
+    [1,1,0,1,1,0,1,1,0,1], 
+    [0,1,0,1,1,1,1,1,0,0]
+  ],
+  [ // ユーザー画像2
+    [0,0,0,0,0,0,0,0,1,0], 
+    [0,1,0,0,0,0,1,1,1,1], 
+    [1,1,0,1,1,0,0,1,1,1], 
+    [0,1,0,1,0,1,1,1,1,0]
+  ]
+];
+
+// EXステージ (切ル)
+const exPatterns = [
+  [
+    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0], 
+    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0], 
+    [1, 1, 1, 1, 1, 0, 0, 0, 1, 1], 
+    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1], 
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]  
+  ]
 ];
 
 const canvas = document.getElementById('board');
@@ -348,9 +417,8 @@ function initStage(stageIndex) {
   targetArea.style.top = `${(20 - maxRow) * BLOCK_SIZE + 1}px`;
   targetArea.style.height = `${rowsCount * BLOCK_SIZE + 3}px`;
 
-  // EXステージの場合のみ、右端1マス分だけ赤エリアを削る
   if (currentStageIndex === STAGES.length - 1) {
-    targetArea.style.width = `${canvas.width - BLOCK_SIZE}px`; // 200px - 20px = 180px
+    targetArea.style.width = `${canvas.width - BLOCK_SIZE}px`; 
   } else {
     targetArea.style.width = '100%';
   }
@@ -492,10 +560,59 @@ function clearLines() {
   }
 }
 
-// ----------------------------------------------------
-// 汎用判定ロジック群 (相対位置判定 & シルエット判定)
-// ----------------------------------------------------
+// ==========================================
+// 汎用判定ロジック (シルエット抽出＆マッチング)
+// ==========================================
 
+// 余白を切り落としてブロックの形だけを配列化する
+function extractSilhouette(b) {
+  let minX = 10, maxX = -1, minY = 20, maxY = -1;
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (b[y][x].color !== 0) {
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  if (maxX === -1) return null; 
+  
+  let silhouette = [];
+  for (let y = minY; y <= maxY; y++) {
+    let row = [];
+    for (let x = minX; x <= maxX; x++) {
+      row.push(b[y][x].color !== 0 ? 1 : 0);
+    }
+    silhouette.push(row);
+  }
+  return silhouette;
+}
+
+// 用意した正解パターン群の中に一致するものがあるかチェック
+function checkMatch(extracted, targetPatterns) {
+  if (!extracted) return false;
+  for (let pattern of targetPatterns) {
+    if (extracted.length !== pattern.length) continue;
+    if (extracted[0].length !== pattern[0].length) continue;
+    
+    let isMatch = true;
+    for (let y = 0; y < extracted.length; y++) {
+      for (let x = 0; x < extracted[y].length; x++) {
+        if (extracted[y][x] !== pattern[y][x]) {
+          isMatch = false;
+          break;
+        }
+      }
+      if (!isMatch) break;
+    }
+    if (isMatch) return true;
+  }
+  return false;
+}
+
+// ステージ1と2は「ブロック同士が離れているか」などの空間認識が必要なため元のロジックを保持
 function getPieceStats(b) {
   let pieces = {};
   for (let y = 0; y < 20; y++) {
@@ -528,78 +645,12 @@ function getPieceStats(b) {
   }).sort((a, b) => a.id - b.id);
 }
 
-function countBlocksInArea(b, pieceId, yStart, yEnd) {
-    let count = 0;
-    for (let y = yStart; y <= yEnd; y++) {
-        for (let x = 0; x < 10; x++) {
-            if (b[y][x].id === pieceId) {
-                count++;
-            }
-        }
-    }
-    return count;
-}
-
-function extractSilhouette(b) {
-  let minX = 10, maxX = -1, minY = 20, maxY = -1;
-  for (let y = 0; y < 20; y++) {
-    for (let x = 0; x < 10; x++) {
-      if (b[y][x].color !== 0) {
-        minX = Math.min(minX, x);
-        maxX = Math.max(maxX, x);
-        minY = Math.min(minY, y);
-        maxY = Math.max(maxY, y);
-      }
-    }
-  }
-  if (maxX === -1) return null; 
-  
-  let silhouette = [];
-  for (let y = minY; y <= maxY; y++) {
-    let row = [];
-    for (let x = minX; x <= maxX; x++) {
-      row.push(b[y][x].color !== 0 ? 1 : 0);
-    }
-    silhouette.push(row);
-  }
-  return silhouette;
-}
-
-function checkMatch(extracted, targetPatterns) {
-  if (!extracted) return false;
-  for (let pattern of targetPatterns) {
-    if (extracted.length !== pattern.length) continue;
-    if (extracted[0].length !== pattern[0].length) continue;
-    
-    let isMatch = true;
-    for (let y = 0; y < extracted.length; y++) {
-      for (let x = 0; x < extracted[y].length; x++) {
-        if (extracted[y][x] !== pattern[y][x]) {
-          isMatch = false;
-          break;
-        }
-      }
-      if (!isMatch) break;
-    }
-    if (isMatch) return true;
-  }
-  return false;
-}
-
-// ----------------------------------------------------
-// 各ステージの判定
-// ----------------------------------------------------
-
 function checkStage1(b) {
   let stats = getPieceStats(b);
   if (stats.length !== 2) return false;
   const isVertical = stats.every(p => p.width === 1 && p.height === 4);
   const isSeparated = Math.abs(stats[0].minX - stats[1].minX) > 1;
-  if (!(isVertical && isSeparated)) return false;
-  for (let p of stats) {
-      if (countBlocksInArea(b, p.id, 17, 18) !== 2) return false;
-  }
-  return true;
+  return isVertical && isSeparated;
 }
 
 function checkStage2(b) {
@@ -608,118 +659,7 @@ function checkStage2(b) {
   const isVertical = stats.every(p => p.width === 1 && p.height === 4);
   const isAdjacent = Math.abs(stats[0].minX - stats[1].minX) === 1;
   const isSameHeight = stats[0].minY === stats[1].minY;
-  if (!(isVertical && isAdjacent && isSameHeight)) return false;
-  for (let p of stats) {
-      if (countBlocksInArea(b, p.id, 17, 18) !== 2) return false;
-  }
-  return true;
-}
-
-function checkColaStage(b, targetRows) {
-  let stats = getPieceStats(b);
-  let pT = stats.find(p => p.color === 6); // 紫
-  let pJ = stats.find(p => p.color === 2); // 青
-  let pL = stats.find(p => p.color === 3); // オレンジ
-  
-  if (!pT || !pJ || !pL) return false;
-
-  let minRow = Math.min(...targetRows);
-  let maxRow = Math.max(...targetRows);
-  let startY = 20 - maxRow;
-  let endY = 20 - minRow;
-
-  let jCount = countBlocksInArea(b, pJ.id, startY, endY);
-  let lCount = countBlocksInArea(b, pL.id, startY, endY);
-
-  if (startY === 17) { 
-      if (jCount !== 1) return false;
-      if (lCount !== 2 && lCount !== 3) return false;
-  } else { 
-      if (jCount !== 1 && jCount !== 4) return false;
-      if (lCount !== 3) return false;
-  }
-
-  if (!(pT.minX < pJ.minX && pJ.minX < pL.minX)) return false;
-  return true;
-}
-
-function checkStage3(b) { return checkColaStage(b, [2, 3]); }
-function checkStage4(b) { return checkColaStage(b, [1, 2]); }
-
-function checkStage5(b) {
-  let stats = getPieceStats(b);
-  let tPieces = stats.filter(p => p.color === 6); // T(紫)
-  let oPieces = stats.filter(p => p.color === 4); // O(黄色)
-  
-  if (tPieces.length < 2 || oPieces.length < 1) return false;
-
-  let tVert = tPieces.find(p => p.width === 2 && p.height === 3);
-  let tHorz = tPieces.find(p => p.width === 3 && p.height === 2);
-  
-  if (!tVert || !tHorz) return false;
-
-  let oPiece = oPieces[0];
-
-  // 並び順：左から 縦T -> 横T -> O
-  if (!(tVert.minX < tHorz.minX && tHorz.minX < oPiece.minX)) return false;
-
-  // 赤エリア (Y=17, 18) のマス数
-  if (countBlocksInArea(b, tVert.id, 17, 18) !== 3) return false;
-  if (countBlocksInArea(b, tHorz.id, 17, 18) !== 3) return false;
-  if (countBlocksInArea(b, oPiece.id, 17, 18) !== 4) return false;
-
-  return true;
-}
-
-function checkStage6(b) {
-  let stats = getPieceStats(b);
-  let tPieces = stats.filter(p => p.color === 6); // T
-  let oPieces = stats.filter(p => p.color === 4); // O
-  let zPieces = stats.filter(p => p.color === 7); // Z(赤)
-  
-  if (tPieces.length < 2 || oPieces.length < 1 || zPieces.length < 1) return false;
-
-  let tVert = tPieces.find(p => p.width === 2 && p.height === 3);
-  let tHorz = tPieces.find(p => p.width === 3 && p.height === 2);
-  
-  if (!tVert || !tHorz) return false;
-
-  // 1. 赤エリア(Y=18, 19)で、Tのマス数チェック
-  if (countBlocksInArea(b, tVert.id, 18, 19) !== 3) return false;
-  if (countBlocksInArea(b, tHorz.id, 18, 19) !== 3) return false;
-
-  // 2. 赤エリア内で「O（黄色）とZ（赤）の2x2の重なり」を探す
-  let oBlocks = [];
-  let zBlocks = [];
-  for(let x = 0; x < 10; x++) {
-      if (b[18][x].color === 4) oBlocks.push(x); // Y=18にOがあるX座標
-      if (b[19][x].color === 7) zBlocks.push(x); // Y=19にZがあるX座標
-  }
-  
-  // それぞれ2マスずつ入っていなければ不正解
-  if (oBlocks.length !== 2 || zBlocks.length !== 2) return false;
-  // Oの2マスとZの2マスのX座標が完全に一致（2x2になっている）していなければ不正解
-  if (oBlocks[0] !== zBlocks[0] || oBlocks[1] !== zBlocks[1]) return false;
-  
-  let ozMinX = oBlocks[0];
-
-  // 3. 順番のチェック：左から 縦T -> 横T -> (O+Zの複合ブロック)
-  if (!(tVert.minX < tHorz.minX && tHorz.minX < ozMinX)) return false;
-
-  return true;
-}
-
-function checkStageEX(b) {
-  const extracted = extractSilhouette(b);
-  // 画像から抽出した完璧なシルエット配列（0と1の構成）
-  const patternEX = [
-    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0], // Y=15
-    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0], // Y=16
-    [1, 1, 1, 1, 1, 0, 0, 0, 1, 1], // Y=17
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1], // Y=18
-    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]  // Y=19
-  ];
-  return checkMatch(extracted, [patternEX]);
+  return isVertical && isAdjacent && isSameHeight;
 }
 
 function checkWin() {
