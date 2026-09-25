@@ -241,179 +241,305 @@ const SHAPES = {
 const COLORS = [null, '#00ffff', '#0000ff', '#ffa500', '#ffff00', '#00ff00', '#800080', '#ff0000'];
 
 // ==========================================
-// 💡 ステージ3, 4専用判定ロジック
+// 💡 最強の隣接エッジ抽出エンジン
 // ==========================================
-function checkColaStage(b, targetRows) {
-  let minRow = Math.min(...targetRows);
-  let maxRow = Math.max(...targetRows);
-  let startY = 20 - maxRow;
-  let endY = 20 - minRow;
-
-  let tBlocks = []; // T: color 6
-  let jBlocks = []; // J: color 2
-  let lBlocks = []; // L: color 3
-
-  for (let y = startY; y <= endY; y++) {
-    for (let x = 0; x < 10; x++) {
-      let c = b[y][x].color;
-      if (c === 6) tBlocks.push({x, y});
-      if (c === 2) jBlocks.push({x, y});
-      if (c === 3) lBlocks.push({x, y});
-    }
-  }
-
-  // ② Jの色横1 (マス数が1であること)
-  if (jBlocks.length !== 1) return false;
-
-  // 「横2縦1 (縦は必ず横よりも右)」を判定する関数
-  // つまり、マス数が3、幅が2で、左の列に1マス、右の列に2マスあること
-  function isLeft1Right2(blocks) {
-    if (blocks.length !== 3) return false;
-    let xs = blocks.map(blk => blk.x);
-    let minX = Math.min(...xs);
-    let maxX = Math.max(...xs);
-    if (maxX - minX !== 1) return false; // 幅2チェック
-    
-    let cMin = 0, cMax = 0;
-    for (let x of xs) {
-      if (x === minX) cMin++;
-      if (x === maxX) cMax++;
-    }
-    return cMin === 1 && cMax === 2; // 左1マス、右2マス
-  }
-
-  // ① Tの色横2縦1
-  if (!isLeft1Right2(tBlocks)) return false;
-
-  // ③ Lの色横2縦1
-  if (!isLeft1Right2(lBlocks)) return false;
-
-  // 左から ①T, ②J, ③L の順に存在する
-  let tMinX = Math.min(...tBlocks.map(blk => blk.x));
-  let jMinX = jBlocks[0].x;
-  let lMinX = Math.min(...lBlocks.map(blk => blk.x));
-
-  if (!(tMinX < jMinX && jMinX < lMinX)) return false;
-
-  return true;
-}
-
-// ==========================================
-// 💡 ステージ5〜EX用：隣接エッジ判定エンジン
-// ==========================================
+// お客様のロジック通り、赤エリア1段なら横20本/縦9本、赤エリア2段なら横30本/縦18本 を正確に抽出します
 function getAdjacency(b, startY, endY) {
+  // 縦棒 (x方向に隣接する同色ブロックの境界)
   let vBars = []; 
-  let hBars = []; 
   for (let y = startY; y <= endY; y++) {
     let v = [];
     for (let x = 0; x < 9; x++) {
       v.push((b[y][x].color !== 0 && b[y][x].color === b[y][x+1].color) ? 1 : 0);
     }
     vBars.push(v);
-    
-    if (y < endY) {
-      let h = [];
-      for (let x = 0; x < 10; x++) {
-        h.push((b[y][x].color !== 0 && b[y][x].color === b[y+1][x].color) ? 1 : 0);
-      }
-      hBars.push(h);
+  }
+
+  // 横棒 (y方向に隣接する同色ブロックの境界。上下の外周含む)
+  let hBars = []; 
+  for (let y = startY; y <= endY + 1; y++) {
+    let h = [];
+    for (let x = 0; x < 10; x++) {
+      let c1 = (y - 1 >= 0) ? b[y-1][x].color : 0;
+      let c2 = (y < 20) ? b[y][x].color : 0;
+      h.push((c1 !== 0 && c1 === c2) ? 1 : 0);
     }
+    hBars.push(h);
   }
   return { vBars, hBars };
 }
 
-function compilePattern(mapArr) {
-  let vBars = [];
-  let hBars = [];
-  let rows = mapArr.length;
-  for (let y = 0; y < rows; y++) {
-    let v = [];
-    for (let x = 0; x < 9; x++) {
-      let c1 = mapArr[y][x];
-      let c2 = mapArr[y][x+1];
-      v.push((c1 !== '0' && c1 !== ' ' && c1 === c2) ? 1 : 0);
-    }
-    vBars.push(v);
-    
-    if (y < rows - 1) {
-      let h = [];
-      for (let x = 0; x < 10; x++) {
-        let c1 = mapArr[y][x];
-        let c2 = mapArr[y+1][x];
-        h.push((c1 !== '0' && c1 !== ' ' && c1 === c2) ? 1 : 0);
+// シルエット判定用
+function extractSilhouette(b) {
+  let minX = 10, maxX = -1, minY = 20, maxY = -1;
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (b[y][x].color !== 0) {
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
       }
-      hBars.push(h);
     }
   }
-  return { vBars, hBars };
+  if (maxX === -1) return null; 
+  
+  let silhouette = [];
+  for (let y = minY; y <= maxY; y++) {
+    let row = [];
+    for (let x = minX; x <= maxX; x++) {
+      row.push(b[y][x].color !== 0 ? 1 : 0);
+    }
+    silhouette.push(row);
+  }
+  return silhouette;
 }
 
-function matchAdjacency(board, targetRows, patterns) {
-  let minRow = Math.min(...targetRows);
-  let maxRow = Math.max(...targetRows);
-  let startY = 20 - maxRow;
-  let endY = 20 - minRow;
-  
-  let actual = getAdjacency(board, startY, endY);
-  
-  for (let pMap of patterns) {
-    let pHeight = pMap.length;
-    let pWidth = Math.max(...pMap.map(r => r.length));
+function checkMatch(extracted, targetPatterns) {
+  if (!extracted) return false;
+  for (let pattern of targetPatterns) {
+    if (extracted.length !== pattern.length) continue;
+    if (extracted[0].length !== pattern[0].length) continue;
     
-    for (let shift = 0; shift <= 10 - pWidth; shift++) {
-      let shiftedMap = [];
-      for (let y = 0; y < pHeight; y++) {
-        let rowStr = "0".repeat(shift) + pMap[y];
-        rowStr = rowStr.padEnd(10, '0');
-        shiftedMap.push(rowStr);
-      }
-      
-      let expected = compilePattern(shiftedMap);
-      let match = true;
-      for (let y = 0; y < actual.vBars.length; y++) {
-        for (let x = 0; x < 9; x++) {
-          if (actual.vBars[y][x] !== expected.vBars[y][x]) { match = false; break; }
+    let isMatch = true;
+    for (let y = 0; y < extracted.length; y++) {
+      for (let x = 0; x < extracted[y].length; x++) {
+        if (extracted[y][x] !== pattern[y][x]) {
+          isMatch = false;
+          break;
         }
-        if (!match) break;
       }
-      if (!match) continue;
-      
-      for (let y = 0; y < actual.hBars.length; y++) {
-        for (let x = 0; x < 10; x++) {
-          if (actual.hBars[y][x] !== expected.hBars[y][x]) { match = false; break; }
-        }
-        if (!match) break;
-      }
-      
-      if (match) return true;
+      if (!isMatch) break;
     }
+    if (isMatch) return true;
   }
   return false;
 }
 
 // ------------------------------------------
-// 各ステージの正解パターン定義
+// 🧩 ステージ3・4専用の明確なルール判定関数
 // ------------------------------------------
-const STAGE5_PATTERNS = [
-  ["0T0TTT0OO", "0TT0T00OO"],
-  ["T00TTT0OO", "TT00T00OO"],
-  ["TTT0TTT0OO", "0T000T00OO"], 
-  ["0T00TTT0OO", "0TTT0T00OO"]
-];
+function checkColaStage(b, targetRows) {
+  let minRow = Math.min(...targetRows);
+  let maxRow = Math.max(...targetRows);
+  let startY = 20 - maxRow;
+  let endY = 20 - minRow;
 
-const STAGE6_PATTERNS = [
-  ["0T0TTT0OO", "0TT0T00ZZ"],
-  ["T00TTT0OO", "TT00T00ZZ"], 
-  ["TTT0TTT0OO", "0T000T00ZZ"], 
-  ["0T00TTT0OO", "0TTT0T00ZZ"]
-];
+  let tBlocks = []; // T: color 6 (紫)
+  let jBlocks = []; // J: color 2 (青)
+  let lBlocks = []; // L: color 3 (橙)
 
-const STAGE_EX_PATTERNS = [
-  [
-    "GGBBBXXXK", 
-    "GGXXXBBBK"
-  ]
-];
+  for (let y = startY; y <= endY; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (b[y][x].color === 6) tBlocks.push({x, y});
+      if (b[y][x].color === 2) jBlocks.push({x, y});
+      if (b[y][x].color === 3) lBlocks.push({x, y});
+    }
+  }
+
+  // ② Jの色 横1マス
+  if (jBlocks.length !== 1) return false;
+  let jX = jBlocks[0].x;
+
+  // 「横2縦1 (縦は横より右)」かどうかを検証する内部関数
+  function checkShape(blocks) {
+    if (blocks.length !== 3) return false; // エリア内に合計3マスであること
+    let top = blocks.filter(blk => blk.y === startY);
+    let bot = blocks.filter(blk => blk.y === endY);
+    
+    let horizRow, vertRow;
+    if (top.length === 2 && bot.length === 1) {
+      horizRow = top; vertRow = bot;
+    } else if (top.length === 1 && bot.length === 2) {
+      horizRow = bot; vertRow = top;
+    } else {
+      return false;
+    }
+
+    // 横2マスが隣接しているか
+    if (Math.abs(horizRow[0].x - horizRow[1].x) !== 1) return false;
+    
+    // 縦1マスのX座標が、横2マスの右側のX座標と一致しているか
+    let rightX = Math.max(horizRow[0].x, horizRow[1].x);
+    if (vertRow[0].x !== rightX) return false;
+
+    return { minX: Math.min(...blocks.map(blk => blk.x)) };
+  }
+
+  // ① Tの色 横2縦1 (縦は横より右)
+  let tShape = checkShape(tBlocks);
+  if (!tShape) return false;
+
+  // ③ Lの色 横2縦1 (縦は横より右)
+  let lShape = checkShape(lBlocks);
+  if (!lShape) return false;
+
+  // 左から ①T, ②J, ③L の順に存在する (隙間は無視)
+  if (!(tShape.minX < jX && jX < lShape.minX)) return false;
+
+  return true;
+}
+
+// ------------------------------------------
+// 🧩 各ステージの判定定義
+// ------------------------------------------
+function getPieceStats(b) {
+  let pieces = {};
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 10; x++) {
+      let cell = b[y][x];
+      if (cell.id > 0) {
+        if (!pieces[cell.id]) {
+          pieces[cell.id] = { minX: x, maxX: x, minY: y, maxY: y, count: 0, color: cell.color };
+        }
+        let p = pieces[cell.id];
+        p.minX = Math.min(p.minX, x);
+        p.maxX = Math.max(p.maxX, x);
+        p.minY = Math.min(p.minY, y);
+        p.maxY = Math.max(p.maxY, y);
+        p.count++;
+      }
+    }
+  }
+  return Object.keys(pieces).map(id => {
+    let p = pieces[id];
+    return {
+      id: parseInt(id),
+      color: p.color,
+      minX: p.minX,
+      maxX: p.maxX,
+      minY: p.minY,
+      width: p.maxX - p.minX + 1,
+      height: p.maxY - p.minY + 1
+    };
+  }).sort((a, b) => a.id - b.id);
+}
+
+function checkStage1(b) {
+  let stats = getPieceStats(b);
+  if (stats.length !== 2) return false;
+  const isVertical = stats.every(p => p.width === 1 && p.height === 4);
+  const isSeparated = Math.abs(stats[0].minX - stats[1].minX) > 1;
+  return isVertical && isSeparated;
+}
+
+function checkStage2(b) {
+  let stats = getPieceStats(b);
+  if (stats.length !== 2) return false;
+  const isVertical = stats.every(p => p.width === 1 && p.height === 4);
+  const isAdjacent = Math.abs(stats[0].minX - stats[1].minX) === 1;
+  const isSameHeight = stats[0].minY === stats[1].minY;
+  return isVertical && isAdjacent && isSameHeight;
+}
+
+function checkStage5(b) {
+  let stats = getPieceStats(b);
+  let tPieces = stats.filter(p => p.color === 6);
+  let oPieces = stats.filter(p => p.color === 4);
+  
+  if (tPieces.length < 2 || oPieces.length < 1) return false;
+
+  let tData = tPieces.map(p => {
+    let count = 0;
+    let minX = 10, maxX = -1;
+    for(let y = 17; y <= 18; y++) {
+      for(let x = 0; x < 10; x++) {
+        if(b[y][x].id === p.id) {
+          count++;
+          minX = Math.min(minX, x);
+          maxX = Math.max(maxX, x);
+        }
+      }
+    }
+    return { id: p.id, minX: p.minX, count: count, w: maxX >= minX ? (maxX - minX + 1) : 0 };
+  });
+
+  let validTs = tData.filter(t => t.count >= 3);
+  if (validTs.length < 2) return false;
+
+  let tVert = validTs.find(t => t.w === 2);
+  let tHorz = validTs.find(t => t.w === 3);
+  if (!tVert || !tHorz) return false;
+
+  let oPiece = oPieces[0];
+  let oMinX = 10;
+  let oCount = 0;
+  for(let y = 17; y <= 18; y++) {
+    for(let x = 0; x < 10; x++) {
+      if(b[y][x].id === oPiece.id) {
+        oCount++;
+        oMinX = Math.min(oMinX, x);
+      }
+    }
+  }
+
+  if (oCount !== 4) return false;
+  if (!(tVert.minX < tHorz.minX && tHorz.minX < oMinX)) return false;
+
+  return true;
+}
+
+function checkStage6(b) {
+  let stats = getPieceStats(b);
+  let tPieces = stats.filter(p => p.color === 6);
+  if (tPieces.length < 2) return false;
+
+  let tData = tPieces.map(p => {
+    let count = 0;
+    let minX = 10, maxX = -1;
+    for(let y = 18; y <= 19; y++) {
+      for(let x = 0; x < 10; x++) {
+        if(b[y][x].id === p.id) {
+          count++;
+          minX = Math.min(minX, x);
+          maxX = Math.max(maxX, x);
+        }
+      }
+    }
+    return { id: p.id, minX: p.minX, count: count, w: maxX >= minX ? (maxX - minX + 1) : 0 };
+  });
+
+  let validTs = tData.filter(t => t.count >= 3);
+  if (validTs.length < 2) return false;
+
+  let tVert = validTs.find(t => t.w === 2);
+  let tHorz = validTs.find(t => t.w === 3);
+  if (!tVert || !tHorz) return false;
+
+  let oBlocks = [];
+  let zBlocks = [];
+  for(let x = 0; x < 10; x++) {
+      if (b[18][x].color === 4) oBlocks.push(x);
+      if (b[19][x].color === 7) zBlocks.push(x);
+  }
+  
+  if (oBlocks.length !== 2 || zBlocks.length !== 2) return false;
+  if (oBlocks[0] !== zBlocks[0] || oBlocks[1] !== zBlocks[1]) return false;
+  
+  let ozMinX = oBlocks[0];
+  if (!(tVert.minX < tHorz.minX && tHorz.minX < ozMinX)) return false;
+
+  return true;
+}
+
+function checkStageEX(b) {
+  const extracted = extractSilhouette(b);
+  const patternEX1 = [
+    [0, 0, 0, 1, 0, 0, 0, 0, 0], 
+    [0, 1, 0, 1, 0, 0, 0, 0, 1], 
+    [1, 1, 1, 1, 1, 0, 0, 0, 1], 
+    [1, 1, 1, 1, 1, 1, 1, 1, 0], 
+    [0, 1, 1, 1, 1, 1, 1, 1, 1]  
+  ];
+  const patternEX2 = [
+    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0], 
+    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0], 
+    [1, 1, 1, 1, 1, 0, 0, 0, 1, 1], 
+    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1], 
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]  
+  ];
+  return checkMatch(extracted, [patternEX1, patternEX2]);
+}
 
 const STAGES = [
   {
@@ -444,19 +570,19 @@ const STAGES = [
     title: "カットを作ろう！",
     sequence: ['I', 'I', 'O', 'T', 'T'],
     targetRows: [2, 3],
-    check: (b) => matchAdjacency(b, [2, 3], STAGE5_PATTERNS)
+    check: (b) => checkStage5(b)
   },
   {
     title: "カットを大文字で作ろう！",
     sequence: ['I', 'I', 'Z', 'O', 'T', 'T'],
     targetRows: [1, 2],
-    check: (b) => matchAdjacency(b, [1, 2], STAGE6_PATTERNS)
+    check: (b) => checkStage6(b)
   },
   {
     title: "切ルを作ろう！",
     sequence: ['S', 'S', 'J', 'L', 'J', 'L', 'J', 'J', 'L', 'T', 'I', 'S', 'J'],
     targetRows: [2, 3], 
-    check: (b) => matchAdjacency(b, [2, 3], STAGE_EX_PATTERNS)
+    check: (b) => checkStageEX(b)
   }
 ];
 
@@ -664,55 +790,6 @@ function clearLines() {
     board.unshift(newRow);
     ++y;
   }
-}
-
-function getPieceStats(b) {
-  let pieces = {};
-  for (let y = 0; y < 20; y++) {
-    for (let x = 0; x < 10; x++) {
-      let cell = b[y][x];
-      if (cell.id > 0) {
-        if (!pieces[cell.id]) {
-          pieces[cell.id] = { minX: x, maxX: x, minY: y, maxY: y, count: 0, color: cell.color };
-        }
-        let p = pieces[cell.id];
-        p.minX = Math.min(p.minX, x);
-        p.maxX = Math.max(p.maxX, x);
-        p.minY = Math.min(p.minY, y);
-        p.maxY = Math.max(p.maxY, y);
-        p.count++;
-      }
-    }
-  }
-  return Object.keys(pieces).map(id => {
-    let p = pieces[id];
-    return {
-      id: parseInt(id),
-      color: p.color,
-      minX: p.minX,
-      maxX: p.maxX,
-      minY: p.minY,
-      width: p.maxX - p.minX + 1,
-      height: p.maxY - p.minY + 1
-    };
-  }).sort((a, b) => a.id - b.id);
-}
-
-function checkStage1(b) {
-  let stats = getPieceStats(b);
-  if (stats.length !== 2) return false;
-  const isVertical = stats.every(p => p.width === 1 && p.height === 4);
-  const isSeparated = Math.abs(stats[0].minX - stats[1].minX) > 1;
-  return isVertical && isSeparated;
-}
-
-function checkStage2(b) {
-  let stats = getPieceStats(b);
-  if (stats.length !== 2) return false;
-  const isVertical = stats.every(p => p.width === 1 && p.height === 4);
-  const isAdjacent = Math.abs(stats[0].minX - stats[1].minX) === 1;
-  const isSameHeight = stats[0].minY === stats[1].minY;
-  return isVertical && isAdjacent && isSameHeight;
 }
 
 function checkWin() {
