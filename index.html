@@ -326,9 +326,7 @@ function checkStage6(b) {
   let eZ = countEdges(b, 18, 19, 7);
 
   if (eT.v.length !== 3 || eT.h.length !== 3) return false;
-  // Oミノは上半分が赤エリア外(y=17)にあるため、y=18境界でのみhエッジが2本検出されるのが正しいです
   if (eO.v.length !== 1 || eO.h.length !== 2) return false;
-  // Zミノはy=19にのみ存在するため、hエッジは0本
   if (eZ.v.length !== 1 || eZ.h.length !== 0) return false;
 
   let oXs = [], zXs = [];
@@ -341,26 +339,6 @@ function checkStage6(b) {
 
   let tX = Math.min(...eT.v.map(e=>e.x));
   return tX < oXs[0];
-}
-
-function checkMatch(extracted, targetPatterns) {
-  if (!extracted) return false;
-  for (let pattern of targetPatterns) {
-    if (extracted.length !== pattern.length) continue;
-    if (extracted[0].length !== pattern[0].length) continue;
-    let isMatch = true;
-    for (let y = 0; y < extracted.length; y++) {
-      for (let x = 0; x < extracted[y].length; x++) {
-        if (extracted[y][x] !== pattern[y][x]) {
-          isMatch = false;
-          break;
-        }
-      }
-      if (!isMatch) break;
-    }
-    if (isMatch) return true;
-  }
-  return false;
 }
 
 function extractSilhouette(b) {
@@ -387,23 +365,38 @@ function extractSilhouette(b) {
   return silhouette;
 }
 
+function checkMatch(extracted, targetPatterns) {
+  if (!extracted) return false;
+  for (let pattern of targetPatterns) {
+    if (extracted.length !== pattern.length) continue;
+    if (extracted[0].length !== pattern[0].length) continue;
+    let isMatch = true;
+    for (let y = 0; y < extracted.length; y++) {
+      for (let x = 0; x < extracted[y].length; x++) {
+        if (extracted[y][x] !== pattern[y][x]) {
+          isMatch = false;
+          break;
+        }
+      }
+      if (!isMatch) break;
+    }
+    if (isMatch) return true;
+  }
+  return false;
+}
+
 function checkStageEX(b) {
   const extracted = extractSilhouette(b);
-  const patternEX1 = [
-    [0, 0, 0, 1, 0, 0, 0, 0, 0], 
-    [0, 1, 0, 1, 0, 0, 0, 0, 1], 
-    [1, 1, 1, 1, 1, 0, 0, 0, 1], 
-    [1, 1, 1, 1, 1, 1, 1, 1, 0], 
-    [0, 1, 1, 1, 1, 1, 1, 1, 1]  
+  // 画像から抽出した完全なシルエットパターン
+  const patternEX = [
+    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+    [0, 1, 0, 1, 0, 0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 0, 0, 0, 0, 1, 0],
+    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [0, 1, 0, 0, 0, 1, 1, 1, 1, 1]
   ];
-  const patternEX2 = [
-    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0], 
-    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0], 
-    [1, 1, 1, 1, 1, 0, 0, 0, 1, 1], 
-    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1], 
-    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]  
-  ];
-  return checkMatch(extracted, [patternEX1, patternEX2]);
+  return checkMatch(extracted, [patternEX]);
 }
 
 const STAGES = [
@@ -663,6 +656,10 @@ function checkWin() {
   if (stage.check(board)) {
     if (currentStageIndex === STAGES.length - 1) {
       showMessage("🎉 全ての謎が解けました！", true);
+    } else if (currentStageIndex === 5) {
+      // ステージ6クリア時の特殊メッセージ
+      let msg = `clear!<br><br><span style="font-size:12px; font-weight:normal; display:inline-block; margin-top:8px;">EXステージは、どうロジカルに解けるのかpiaにもわかっていません。答えが気になる人はこちらをみてください。<br><br><a href="https://fumen.zui.jp/?m115@vhNvJJvfBGrBilB+tBisBGsB2lBSnB9aBBhB/jB+bB?AAA" target="_blank" style="color: #4db8ff; text-decoration: underline; word-break: break-all;">https://fumen.zui.jp/?m115@vhNvJJvfBGrBilB+tBisBGsB2lBSnB9aBBhB/jB+bB?AAA</a></span>`;
+      showMessage(msg, true);
     } else {
       showMessage("CLEAR!", true);
     }
@@ -674,8 +671,11 @@ function checkWin() {
 function showMessage(text, isClear) {
   const win = document.getElementById('message-window');
   const btn = document.getElementById('message-btn');
-  document.getElementById('message-text').innerText = text;
-  document.getElementById('message-text').style.color = isClear ? "#00ff00" : "#ff3333";
+  const msgText = document.getElementById('message-text');
+  
+  // innerText から innerHTML に変更し、HTMLタグを解釈させる
+  msgText.innerHTML = text;
+  msgText.style.color = isClear ? "#00ff00" : "#ff3333";
   
   if (isClear && currentStageIndex === STAGES.length - 1) {
     btn.style.display = 'none';
