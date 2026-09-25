@@ -505,32 +505,72 @@ function getPieceStats(b) {
   }).sort((a, b) => a.id - b.id);
 }
 
+// 指定したIDのミノが指定した行範囲(yStart ~ yEnd)に何マス入っているか数える関数
+function countBlocksInArea(b, pieceId, yStart, yEnd) {
+    let count = 0;
+    for (let y = yStart; y <= yEnd; y++) {
+        for (let x = 0; x < 10; x++) {
+            if (b[y][x].id === pieceId) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
 function checkStage1(b) {
   let stats = getPieceStats(b);
   if (stats.length !== 2) return false;
+  
+  // 条件: どちらも縦4マス
   const isVertical = stats.every(p => p.width === 1 && p.height === 4);
+  // 条件: X座標が離れている
   const isSeparated = Math.abs(stats[0].minX - stats[1].minX) > 1;
-  return isVertical && isSeparated;
+  
+  if (!(isVertical && isSeparated)) return false;
+
+  // 追加条件: 各Iミノが赤エリア(下から2, 3段目 = Y:17, 18)にそれぞれ2マスずつ入っていること
+  for (let p of stats) {
+      if (countBlocksInArea(b, p.id, 17, 18) !== 2) return false;
+  }
+  
+  return true;
 }
 
 function checkStage2(b) {
   let stats = getPieceStats(b);
   if (stats.length !== 2) return false;
+  
   const isVertical = stats.every(p => p.width === 1 && p.height === 4);
   const isAdjacent = Math.abs(stats[0].minX - stats[1].minX) === 1;
   const isSameHeight = stats[0].minY === stats[1].minY;
-  return isVertical && isAdjacent && isSameHeight;
+  
+  if (!(isVertical && isAdjacent && isSameHeight)) return false;
+
+  // 追加条件: 各Iミノが赤エリア(Y:17, 18)にそれぞれ2マスずつ入っていること
+  for (let p of stats) {
+      if (countBlocksInArea(b, p.id, 17, 18) !== 2) return false;
+  }
+  
+  return true;
 }
 
 function checkStage3(b) {
   let stats = getPieceStats(b);
   if (stats.length !== 3) return false;
   const pT = stats[0], pJ = stats[1], pL = stats[2];
+  
   const shapeCheck = (pT.width===2 && pT.height===3) &&
                      (pJ.width===3 && pJ.height===2) &&
                      (pL.width===2 && pL.height===3);
   const orderCheck = (pT.minX < pJ.minX) && (pJ.minX < pL.minX);
-  return shapeCheck && orderCheck;
+  
+  if (!(shapeCheck && orderCheck)) return false;
+
+  // 厳密な条件: Jミノは赤エリア(下から2, 3段目 = Y:17, 18)に【1マスも入っていてはいけない】(0マスであること)
+  if (countBlocksInArea(b, pJ.id, 17, 18) !== 0) return false;
+
+  return true;
 }
 
 function checkStage4(b) {
@@ -538,62 +578,62 @@ function checkStage4(b) {
   if (stats.length !== 3) return false;
   const pT = stats[0], pL = stats[1], pJ = stats[2];
   
-  // 各ミノの幅・高さの検証
+  // 各ミノの幅・高さの検証 (全て縦3横2)
   const shapeCheck = stats.every(p => p.width === 2 && p.height === 3);
   
   // X座標の順番検証 (正解は左から T, J, L)
   const orderCheck = (pT.minX < pJ.minX) && (pJ.minX < pL.minX);
   
-  if (!(shapeCheck && orderCheck)) return false;
-
-  // Jミノのブロックが赤エリア(Y=18, 19)にいくつ存在するか厳密にカウント
-  let jInRedCount = 0;
-  for (let y = 18; y < 20; y++) {
-    for (let x = 0; x < 10; x++) {
-      if (b[y][x].id === pJ.id) {
-        jInRedCount++;
-      }
-    }
-  }
-  
-  // ちょうど2マスだけ入っていたら不正解
-  if (jInRedCount === 2) {
-    return false;
-  }
-
-  return true;
+  // ステージ4は「形」と「並び順」が合っていれば正解とする。
+  return shapeCheck && orderCheck;
 }
 
 function checkFinalStage(b) {
+  // パターン1: 基準 (画像通り、右下端まで詰まっている)
   const targetPattern1 = [
-    [0,0,0,0,0,0,0,0,0,0],
     [0,1,0,0,0,0,0,1,0,0],
     [1,1,0,1,1,1,1,1,1,0],
     [0,1,0,0,1,0,1,1,1,1]
   ];
+  
+  // パターン2: 基準から【右下のIミノ(一番下の行の1,1,1,1)が左に1マスずれたパターン】
+  // [0,1,0,0,1,0,1,1,1,1] (インデックス6,7,8,9がIミノ)
+  // → Iミノを1マス左へ(インデックス5,6,7,8)
+  // → [0,1,0,0,1,1,1,1,1,0]
   const targetPattern2 = [
-    [0,0,0,0,0,0,0,0,0,0],
-    [0,1,0,0,0,0,1,0,0,0],
+    [0,1,0,0,0,0,0,1,0,0],
     [1,1,0,1,1,1,1,1,1,0],
-    [0,1,0,0,1,0,1,1,1,1]
+    [0,1,0,0,1,1,1,1,1,0]
   ];
   
-  // 上から16行（Y=0〜15）にブロックが1つでも残っていたら失敗
-  for (let i = 0; i < 16; i++) {
-    for (let j = 0; j < 10; j++) {
-      if (b[i][j].color !== 0) return false;
+  // 現在の盤面でブロックが存在する「一番下の行(maxY)」と「一番上の行(minY)」を取得
+  let minY = 20, maxY = -1;
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (b[y][x].color !== 0) {
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
     }
   }
-  
+
+  // ブロックが一切ない場合は不正解
+  if (maxY === -1) return false;
+
+  // ブロックが存在する全体の高さが3行分より大きい(上にゴミブロックが残っている)場合は不正解
+  if (maxY - minY + 1 > 3) return false;
+
+  // 一番下の行(maxY)を基準にして、そこから上に向かって3行分をスキャン
   let match1 = true;
   let match2 = true;
-  // 下から4行（Y=16〜19）の形状判定
-  for (let i = 0; i < 4; i++) {
-    for (let j = 0; j < 10; j++) {
-      // 色やIDは無視し、「ブロックがあるか(color !== 0)」だけで判定
-      let hasBlock = b[16+i][j].color !== 0;
-      if (hasBlock !== (targetPattern1[i][j] === 1)) match1 = false;
-      if (hasBlock !== (targetPattern2[i][j] === 1)) match2 = false;
+  
+  for (let i = 0; i < 3; i++) {
+    let boardY = maxY - 2 + i; // 下から3行目のY座標から順にスキャン
+    for (let x = 0; x < 10; x++) {
+      let hasBlock = (boardY >= 0 && boardY < 20) ? (b[boardY][x].color !== 0) : false;
+      
+      if (hasBlock !== (targetPattern1[i][x] === 1)) match1 = false;
+      if (hasBlock !== (targetPattern2[i][x] === 1)) match2 = false;
     }
   }
   
