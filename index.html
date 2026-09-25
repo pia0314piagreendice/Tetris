@@ -240,11 +240,8 @@ const SHAPES = {
 };
 const COLORS = [null, '#00ffff', '#0000ff', '#ffa500', '#ffff00', '#00ff00', '#800080', '#ff0000'];
 
-// ==========================================
-// 💡 全体エッジカウントエンジン
-// ==========================================
 function countEdges(b, startY, endY, color, maxX = 9) {
-  let v = []; // 縦エッジ (左右の隣接)
+  let v = []; 
   for (let y = startY; y <= endY; y++) {
     for (let x = 0; x < maxX; x++) {
       if (b[y][x].color === color && b[y][x+1].color === color) {
@@ -253,7 +250,7 @@ function countEdges(b, startY, endY, color, maxX = 9) {
     }
   }
 
-  let h = []; // 横エッジ (上下の隣接)
+  let h = []; 
   for (let y = startY; y <= endY + 1; y++) {
     for (let x = 0; x <= (maxX === 8 ? 8 : 9); x++) {
       let c1 = (y - 1 >= 0) ? b[y-1][x].color : 0;
@@ -266,44 +263,33 @@ function countEdges(b, startY, endY, color, maxX = 9) {
   return { v, h };
 }
 
-// ------------------------------------------
-// 🧩 ステージ3・4専用の「超柔軟」な翻訳ロジック
-// ------------------------------------------
 function checkColaStage(b, targetRows) {
   let sY = Math.min(...targetRows);
   let eY = Math.max(...targetRows);
   let startY = 20 - eY;
   let endY = 20 - sY;
   
-  let eT = countEdges(b, startY, endY, 6); // 紫(T)
-  let eJ = countEdges(b, startY, endY, 2); // 青(J)
-  let eL = countEdges(b, startY, endY, 3); // 橙(L)
+  let eT = countEdges(b, startY, endY, 6); 
+  let eJ = countEdges(b, startY, endY, 2); 
+  let eL = countEdges(b, startY, endY, 3); 
 
-  // ① Tの色 横2縦1（縦は横よりも右）-> 「コ」の形
   if (eT.h.length !== 2) return false;
-  if (eT.v.length < 1) return false; // 厳密に1本でなくてもOKとする
-  if (eT.v[0].x <= eT.h[0].x) return false; // 縦が横より右にあるか
+  if (eT.v.length < 1) return false; 
+  if (eT.v[0].x <= eT.h[0].x) return false; 
 
-  // ② Jの色 横1 -> 「ー」の形
   if (eJ.h.length !== 1) return false;
 
-  // ③ Lの色 横2縦1（縦は横よりも右）-> 「ラ」の形
   if (eL.h.length !== 2) return false;
-  // ★解決の要：Lの縦エッジは赤エリア外(下段)にあるため、vの数は0本でも許容し、条件をクリアにする！
   if (eL.v.length > 0 && eL.v[0].x <= eL.h[0].x) return false;
 
-  // かつ左から ①T, ②J, ③L の順に存在する
   let tX = Math.min(...eT.h.map(e => e.x));
   let jX = Math.min(...eJ.h.map(e => e.x));
   let lX = Math.min(...eL.h.map(e => e.x));
   if (!(tX < jX && jX < lX)) return false;
 
-  return true; // 完璧にクリア！
+  return true; 
 }
 
-// ------------------------------------------
-// 🧩 その他のステージの判定
-// ------------------------------------------
 function checkStage1(b) {
   let e = countEdges(b, 17, 18, 1);
   if (e.v.length !== 0 || e.h.length < 4) return false; 
@@ -339,9 +325,10 @@ function checkStage6(b) {
   let eO = countEdges(b, 18, 19, 4);
   let eZ = countEdges(b, 18, 19, 7);
 
-  // ステージ6の厳密なエッジカウント（紫T2個分、OとZが残る形）
-  if (eT.v.length !== 3 || eT.h.length !== 1) return false;
-  if (eO.v.length !== 1 || eO.h.length !== 0) return false;
+  if (eT.v.length !== 3 || eT.h.length !== 3) return false;
+  // Oミノは上半分が赤エリア外(y=17)にあるため、y=18境界でのみhエッジが2本検出されるのが正しいです
+  if (eO.v.length !== 1 || eO.h.length !== 2) return false;
+  // Zミノはy=19にのみ存在するため、hエッジは0本
   if (eZ.v.length !== 1 || eZ.h.length !== 0) return false;
 
   let oXs = [], zXs = [];
@@ -354,6 +341,26 @@ function checkStage6(b) {
 
   let tX = Math.min(...eT.v.map(e=>e.x));
   return tX < oXs[0];
+}
+
+function checkMatch(extracted, targetPatterns) {
+  if (!extracted) return false;
+  for (let pattern of targetPatterns) {
+    if (extracted.length !== pattern.length) continue;
+    if (extracted[0].length !== pattern[0].length) continue;
+    let isMatch = true;
+    for (let y = 0; y < extracted.length; y++) {
+      for (let x = 0; x < extracted[y].length; x++) {
+        if (extracted[y][x] !== pattern[y][x]) {
+          isMatch = false;
+          break;
+        }
+      }
+      if (!isMatch) break;
+    }
+    if (isMatch) return true;
+  }
+  return false;
 }
 
 function extractSilhouette(b) {
@@ -378,26 +385,6 @@ function extractSilhouette(b) {
     silhouette.push(row);
   }
   return silhouette;
-}
-
-function checkMatch(extracted, targetPatterns) {
-  if (!extracted) return false;
-  for (let pattern of targetPatterns) {
-    if (extracted.length !== pattern.length) continue;
-    if (extracted[0].length !== pattern[0].length) continue;
-    let isMatch = true;
-    for (let y = 0; y < extracted.length; y++) {
-      for (let x = 0; x < extracted[y].length; x++) {
-        if (extracted[y][x] !== pattern[y][x]) {
-          isMatch = false;
-          break;
-        }
-      }
-      if (!isMatch) break;
-    }
-    if (isMatch) return true;
-  }
-  return false;
 }
 
 function checkStageEX(b) {
