@@ -540,8 +540,9 @@ function checkStage4(b) {
   
   // 各ミノの幅・高さの検証
   const shapeCheck = stats.every(p => p.width === 2 && p.height === 3);
-  // X座標の順番検証 (左から T, L, J)
-  const orderCheck = (pT.minX < pL.minX) && (pL.minX < pJ.minX);
+  
+  // X座標の順番検証 (正解は左から T, J, L)
+  const orderCheck = (pT.minX < pJ.minX) && (pJ.minX < pL.minX);
   
   if (!(shapeCheck && orderCheck)) return false;
 
