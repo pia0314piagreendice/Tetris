@@ -150,6 +150,15 @@
   .btn:active { background: #666; }
   .grid-blank { visibility: hidden; }
 
+  #btn-answer {
+    background: #27ae60;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    visibility: hidden;
+  }
+  #btn-answer:active { background: #2ecc71; }
+
   #message-window {
     position: absolute;
     top: 30%;
@@ -218,7 +227,7 @@
   <button class="btn" id="btn-left">←</button>
   <button class="btn" id="btn-rotate">↻</button>
   <button class="btn" id="btn-right">→</button>
-  <div class="grid-blank"></div>
+  <button class="btn" id="btn-answer">答え</button>
   <button class="btn" id="btn-down">↓</button>
   <button class="btn" id="btn-drop">⏬</button>
 </div>
@@ -387,7 +396,6 @@ function checkMatch(extracted, targetPatterns) {
 
 function checkStageEX(b) {
   const extracted = extractSilhouette(b);
-  // 画像から抽出した完全なシルエットパターン
   const patternEX = [
     [0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
     [0, 1, 0, 1, 0, 0, 0, 0, 0, 0],
@@ -486,8 +494,10 @@ function initStage(stageIndex) {
   
   if (currentStageIndex === STAGES.length - 1) {
     document.getElementById('riddle-title').innerText = `EX STAGE`;
+    document.getElementById('btn-answer').style.visibility = 'visible';
   } else {
     document.getElementById('riddle-title').innerText = `STAGE ${currentStageIndex + 1}`;
+    document.getElementById('btn-answer').style.visibility = 'hidden';
   }
   document.getElementById('riddle-text').innerText = stage.title;
   
@@ -657,8 +667,8 @@ function checkWin() {
     if (currentStageIndex === STAGES.length - 1) {
       showMessage("🎉 全ての謎が解けました！", true);
     } else if (currentStageIndex === 5) {
-      // ステージ6クリア時の特殊メッセージ
-      let msg = `clear!<br><br><span style="font-size:12px; font-weight:normal; display:inline-block; margin-top:8px;">EXステージは、どうロジカルに解けるのかpiaにもわかっていません。答えが気になる人はこちらをみてください。<br><br><a href="https://fumen.zui.jp/?m115@vhNvJJvfBGrBilB+tBisBGsB2lBSnB9aBBhB/jB+bB?AAA" target="_blank" style="color: #4db8ff; text-decoration: underline; word-break: break-all;">https://fumen.zui.jp/?m115@vhNvJJvfBGrBilB+tBisBGsB2lBSnB9aBBhB/jB+bB?AAA</a></span>`;
+      // ステージ6クリア時の指定メッセージ
+      let msg = `clear!<br><br><span style="font-size:12px; font-weight:normal; display:inline-block; margin-top:8px;">EXステージもありますが、どう論理的に解くのかpiaにもわからないものになっています。<br>答えボタンもあるので、少し考えて無理だったら見てください。</span>`;
       showMessage(msg, true);
     } else {
       showMessage("CLEAR!", true);
@@ -673,7 +683,6 @@ function showMessage(text, isClear) {
   const btn = document.getElementById('message-btn');
   const msgText = document.getElementById('message-text');
   
-  // innerText から innerHTML に変更し、HTMLタグを解釈させる
   msgText.innerHTML = text;
   msgText.style.color = isClear ? "#00ff00" : "#ff3333";
   
@@ -764,6 +773,9 @@ bindTouch('btn-right', () => playerMove(1));
 bindTouch('btn-rotate', () => playerRotate());
 bindTouch('btn-down', () => playerDrop());
 bindTouch('btn-drop', () => hardDrop());
+bindTouch('btn-answer', () => {
+  window.open("https://fumen.zui.jp/?m115@vhNvJJvfBGrBilB+tBisBGsB2lBSnB9aBBhB/jB+bB?AAA", "_blank");
+});
 
 bindTouch('btn-reset-stage', () => initStage(currentStageIndex));
 bindTouch('btn-reset-all', () => initStage(0));
