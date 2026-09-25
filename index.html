@@ -74,7 +74,6 @@
   #target-area {
     position: absolute;
     left: 0;
-    width: 100%;
     background-color: rgba(255, 0, 0, 0.25);
     border-top: 1px dashed rgba(255, 0, 0, 0.5);
     border-bottom: 1px dashed rgba(255, 0, 0, 0.5);
@@ -268,15 +267,21 @@ const STAGES = [
   },
   {
     title: "カットを作ろう！",
-    sequence: ['I', 'O', 'S', 'T', 'I', 'L', 'T'],
+    sequence: ['I', 'I', 'O', 'T', 'T'],
     targetRows: [2, 3],
     check: (b) => checkStage5(b)
   },
   {
     title: "カットを大文字で作ろう！",
-    sequence: ['I', 'O', 'S', 'T', 'I', 'L', 'T'],
-    targetRows: [2, 3],
+    sequence: ['I', 'I', 'Z', 'O', 'T', 'T'],
+    targetRows: [1, 2],
     check: (b) => checkStage6(b)
+  },
+  {
+    title: "切ルを作ろう！", // EXステージ
+    sequence: ['S', 'S', 'J', 'L', 'J', 'L', 'J', 'J', 'L', 'T', 'I', 'S', 'J'],
+    targetRows: [2, 3], 
+    check: (b) => checkStageEX(b)
   }
 ];
 
@@ -319,7 +324,12 @@ drawLogoMino('logo-T', 'T', '#800080', 8);
 function initStage(stageIndex) {
   currentStageIndex = stageIndex;
   const stage = STAGES[currentStageIndex];
-  document.getElementById('riddle-title').innerText = `STAGE ${currentStageIndex + 1}`;
+  
+  if (currentStageIndex === STAGES.length - 1) {
+    document.getElementById('riddle-title').innerText = `EX STAGE`;
+  } else {
+    document.getElementById('riddle-title').innerText = `STAGE ${currentStageIndex + 1}`;
+  }
   document.getElementById('riddle-text').innerText = stage.title;
   
   board = Array.from({length: 20}, () => Array(10).fill(null).map(() => ({color: 0, id: 0})));
@@ -337,6 +347,13 @@ function initStage(stageIndex) {
   targetArea.style.bottom = 'auto';
   targetArea.style.top = `${(20 - maxRow) * BLOCK_SIZE + 1}px`;
   targetArea.style.height = `${rowsCount * BLOCK_SIZE + 3}px`;
+
+  // EXステージの場合のみ、右端1マス分だけ赤エリアを削る
+  if (currentStageIndex === STAGES.length - 1) {
+    targetArea.style.width = `${canvas.width - BLOCK_SIZE}px`; // 200px - 20px = 180px
+  } else {
+    targetArea.style.width = '100%';
+  }
 
   hideMessage();
   spawnPiece();
@@ -523,7 +540,6 @@ function countBlocksInArea(b, pieceId, yStart, yEnd) {
     return count;
 }
 
-// 【最強の汎用判定】盤面のブロック群の形だけを切り出す（バウンディングボックス抽出）
 function extractSilhouette(b) {
   let minX = 10, maxX = -1, minY = 20, maxY = -1;
   for (let y = 0; y < 20; y++) {
@@ -536,7 +552,7 @@ function extractSilhouette(b) {
       }
     }
   }
-  if (maxX === -1) return null; // ブロックなし
+  if (maxX === -1) return null; 
   
   let silhouette = [];
   for (let y = minY; y <= maxY; y++) {
@@ -549,11 +565,9 @@ function extractSilhouette(b) {
   return silhouette;
 }
 
-// 抽出したシルエットが、指定された正解パターンのどれかと一致するかチェックする
 function checkMatch(extracted, targetPatterns) {
   if (!extracted) return false;
   for (let pattern of targetPatterns) {
-    // 幅と高さが一致しなければスキップ
     if (extracted.length !== pattern.length) continue;
     if (extracted[0].length !== pattern[0].length) continue;
     
@@ -603,9 +617,9 @@ function checkStage2(b) {
 
 function checkColaStage(b, targetRows) {
   let stats = getPieceStats(b);
-  let pT = stats.find(p => p.color === 6);
-  let pJ = stats.find(p => p.color === 2);
-  let pL = stats.find(p => p.color === 3);
+  let pT = stats.find(p => p.color === 6); // 紫
+  let pJ = stats.find(p => p.color === 2); // 青
+  let pL = stats.find(p => p.color === 3); // オレンジ
   
   if (!pT || !pJ || !pL) return false;
 
@@ -617,10 +631,10 @@ function checkColaStage(b, targetRows) {
   let jCount = countBlocksInArea(b, pJ.id, startY, endY);
   let lCount = countBlocksInArea(b, pL.id, startY, endY);
 
-  if (startY === 17) { // Stage 3
+  if (startY === 17) { 
       if (jCount !== 1) return false;
       if (lCount !== 2 && lCount !== 3) return false;
-  } else { // Stage 4
+  } else { 
       if (jCount !== 1 && jCount !== 4) return false;
       if (lCount !== 3) return false;
   }
@@ -634,10 +648,10 @@ function checkStage4(b) { return checkColaStage(b, [1, 2]); }
 
 function checkStage5(b) {
   let stats = getPieceStats(b);
-  let tPieces = stats.filter(p => p.color === 6);
-  let oPieces = stats.filter(p => p.color === 4);
+  let tPieces = stats.filter(p => p.color === 6); // T(紫)
+  let oPieces = stats.filter(p => p.color === 4); // O(黄色)
   
-  if (tPieces.length !== 2 || oPieces.length !== 1) return false;
+  if (tPieces.length < 2 || oPieces.length < 1) return false;
 
   let tVert = tPieces.find(p => p.width === 2 && p.height === 3);
   let tHorz = tPieces.find(p => p.width === 3 && p.height === 2);
@@ -646,7 +660,7 @@ function checkStage5(b) {
 
   let oPiece = oPieces[0];
 
-  // 並び順
+  // 並び順：左から 縦T -> 横T -> O
   if (!(tVert.minX < tHorz.minX && tHorz.minX < oPiece.minX)) return false;
 
   // 赤エリア (Y=17, 18) のマス数
@@ -658,23 +672,54 @@ function checkStage5(b) {
 }
 
 function checkStage6(b) {
-  const extracted = extractSilhouette(b);
+  let stats = getPieceStats(b);
+  let tPieces = stats.filter(p => p.color === 6); // T
+  let oPieces = stats.filter(p => p.color === 4); // O
+  let zPieces = stats.filter(p => p.color === 7); // Z(赤)
   
-  // プレイヤーが作った形が余白ゼロで切り抜かれた状態のものと比較します。
-  // パターン1: Iミノがぴったり配置されている形
-  const p1_cropped = [
-    [0,1,0,0,0,0,0,1,0,0],
-    [1,1,0,1,1,1,1,1,1,0],
-    [0,1,0,0,1,0,1,1,1,1]
-  ];
-  // パターン2: Iミノが右に1マスずれている形
-  const p2_cropped = [
-    [0,1,0,0,0,0,0,1,0],
-    [1,1,0,1,1,1,1,1,1],
-    [0,1,0,0,1,1,1,1,1]
-  ];
+  if (tPieces.length < 2 || oPieces.length < 1 || zPieces.length < 1) return false;
 
-  return checkMatch(extracted, [p1_cropped, p2_cropped]);
+  let tVert = tPieces.find(p => p.width === 2 && p.height === 3);
+  let tHorz = tPieces.find(p => p.width === 3 && p.height === 2);
+  
+  if (!tVert || !tHorz) return false;
+
+  // 1. 赤エリア(Y=18, 19)で、Tのマス数チェック
+  if (countBlocksInArea(b, tVert.id, 18, 19) !== 3) return false;
+  if (countBlocksInArea(b, tHorz.id, 18, 19) !== 3) return false;
+
+  // 2. 赤エリア内で「O（黄色）とZ（赤）の2x2の重なり」を探す
+  let oBlocks = [];
+  let zBlocks = [];
+  for(let x = 0; x < 10; x++) {
+      if (b[18][x].color === 4) oBlocks.push(x); // Y=18にOがあるX座標
+      if (b[19][x].color === 7) zBlocks.push(x); // Y=19にZがあるX座標
+  }
+  
+  // それぞれ2マスずつ入っていなければ不正解
+  if (oBlocks.length !== 2 || zBlocks.length !== 2) return false;
+  // Oの2マスとZの2マスのX座標が完全に一致（2x2になっている）していなければ不正解
+  if (oBlocks[0] !== zBlocks[0] || oBlocks[1] !== zBlocks[1]) return false;
+  
+  let ozMinX = oBlocks[0];
+
+  // 3. 順番のチェック：左から 縦T -> 横T -> (O+Zの複合ブロック)
+  if (!(tVert.minX < tHorz.minX && tHorz.minX < ozMinX)) return false;
+
+  return true;
+}
+
+function checkStageEX(b) {
+  const extracted = extractSilhouette(b);
+  // 画像から抽出した完璧なシルエット配列（0と1の構成）
+  const patternEX = [
+    [0, 0, 0, 1, 0, 0, 0, 0, 0, 0], // Y=15
+    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0], // Y=16
+    [1, 1, 1, 1, 1, 0, 0, 0, 1, 1], // Y=17
+    [1, 1, 1, 1, 1, 1, 1, 1, 0, 1], // Y=18
+    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1]  // Y=19
+  ];
+  return checkMatch(extracted, [patternEX]);
 }
 
 function checkWin() {
