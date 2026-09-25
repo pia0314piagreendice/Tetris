@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SLIT Puzzle</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #222;
+    color: #fff;
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100vh;
+    touch-action: none;
+    overflow: hidden;
+  }
+  
+  /* 上部タイトルロゴ (SLIT) */
+  #title-logo {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    margin-bottom: 5px;
+  }
+  .title-mino {
+    width: 30px;
+    height: 30px;
+  }
+
+  #riddle-container {
+    width: 90%;
+    max-width: 320px;
+    background: #333;
+    padding: 6px 10px;
+    border-radius: 8px;
+    text-align: center;
+    border: 2px solid #ccc;
+    margin-bottom: 5px;
+  }
+  #riddle-title {
+    font-size: 12px;
+    color: #ccc;
+  }
+  #riddle-text {
+    font-size: 15px;
+    font-weight: bold;
+    color: #fff;
+  }
+  
+  #game-layout {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  #board-container {
+    position: relative;
+  }
+  canvas#board {
+    background-color: #000;
+    border: 2px solid #555;
+    display: block;
+  }
+  /* 赤い判定エリア */
+  #target-area {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    background-color: rgba(255, 0, 0, 0.25);
+    border-top: 1px dashed rgba(255, 0, 0, 0.5);
+    border-bottom: 1px dashed rgba(255, 0, 0, 0.5);
+    pointer-events: none;
+    display: none;
+  }
+
+  #side-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .next-label {
+    font-size: 11px;
+    margin-bottom: 3px;
+    color: #aaa;
+  }
+  canvas#next-box {
+    background: #111;
+    border: 2px solid #555;
+    border-radius: 4px;
+  }
+  
+  #controls {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    width: 90%;
+    max-width: 280px;
+  }
+  .btn {
+    background: #444;
+    border: none;
+    color: white;
+    padding: 12px 0;
+    font-size: 18px;
+    border-radius: 8px;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  .btn:active { background: #666; }
+  .grid-blank { visibility: hidden; }
+  
+  #btn-reset {
+    grid-column: span 3;
+    background: #c0392b;
+    font-size: 14px;
+    padding: 8px;
+  }
+  #btn-reset:active { background: #e74c3c; }
+
+  /* メッセージウィンドウ (上部1/3) */
+  #message-window {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(10, 10, 10, 0.95);
+    border: 2px solid #f39c12;
+    padding: 15px 20px;
+    border-radius: 10px;
+    text-align: center;
+    z-index: 100;
+    display: none;
+    width: 80%;
+    max-width: 280px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.8);
+  }
+  #message-text {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 12px;
+  }
+  #message-btn {
+    background: #f39c12;
+    color: #000;
+    border: none;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- SLIT ロゴ -->
+<div id="title-logo">
+  <canvas id="logo-S" class="title-mino"></canvas>
+  <canvas id="logo-L" class="title-mino"></canvas>
+  <canvas id="logo-I" class="title-mino"></canvas>
+  <canvas id="logo-T" class="title-mino"></canvas>
+</div>
+
+<div id="riddle-container">
+  <div id="riddle-title">STAGE</div>
+  <div id="riddle-text"></div>
+</div>
+
+<div id="game-layout">
+  <div id="board-container">
+    <canvas id="board" width="200" height="400"></canvas>
+    <div id="target-area"></div>
+  </div>
+  <div id="side-panel">
+    <div class="next-label">NEXT</div>
+    <canvas id="next-box" width="60" height="180"></canvas>
+  </div>
+</div>
+
+<div id="controls">
+  <button class="btn" id="btn-left">←</button>
+  <button class="btn" id="btn-rotate">↻</button>
+  <button class="btn" id="btn-right">→</button>
+  <div class="grid-blank"></div>
+  <button class="btn" id="btn-down">↓</button>
+  <button class="btn" id="btn-drop">⏬</button>
+  <button class="btn" id="btn-reset">↺ リセット (やり直す)</button>
+</div>
+
+<!-- メッセージウィンドウ -->
+<div id="message-window">
+  <div id="message-text"></div>
+  <button id="message-btn">次へ</button>
+</div>
+
+<script>
+const SHAPES = {
+  'I': { shape: [[1,1,1,1]], color: '#00ffff' },
+  'J': { shape: [[1,0,0],[1,1,1]], color: '#0000ff' },
+  'L': { shape: [[0,0,1],[1,1,1]], color: '#ffa500' },
+  'O': { shape: [[1,1],[1,1]], color: '#ffff00' },
+  'S': { shape: [[0,1,1],[1,1,0]], color: '#00ff00' },
+  'T': { shape: [[0,1,0],[1,1,1]], color: '#800080' },
+  'Z': { shape: [[1,1,0],[0,1,1]], color: '#ff0000' }
+};
+const COLORS = [null, '#00ffff', '#0000ff', '#ffa500', '#ffff00', '#00ff00', '#800080', '#ff0000'];
+
+const STAGES = [
+  {
+    title: "耳を作ろう！",
+    sequence: ['I', 'I'],
+    targetRows: [2, 3, 4],
+    check: (b) => checkStage1(b)
+  },
+  {
+    title: "コーラを作ろう！",
+    sequence: ['T', 'J', 'L'],
+    targetRows: [2, 3],
+    check: (b) => checkStage2(b)
+  },
+  {
+    title: "コーラを作ろう！！",
+    sequence: ['T', 'L', 'J'],
+    targetRows: [1, 2],
+    check: (b) => checkStage3(b)
+  },
+  {
+    title: "カットを作ろう！",
+    sequence: ['I', 'O', 'S', 'T', 'I', 'L', 'T'],
+    targetRows: [2],
+    check: (b) => checkFinalStage(b)
+  }
+];
+
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const nextCanvas = document.getElementById('next-box');
+const nextCtx = nextCanvas.getContext('2d');
+const BLOCK_SIZE = 20;
+
+let board, currentPiece, currentX, currentY;
+let sequenceIndex = 0;
+let pieceCounter = 0; // 各ピース識別用の固有ID
+let dropCounter = 0;
+let lastTime = 0;
+let gameOver = false;
+let isUpdating = false;
+let currentStageIndex = 0;
+
+// ----- ロゴ描画 -----
+function drawLogoMino(id, type, color, scale) {
+  const c = document.getElementById(id);
+  const cx = c.getContext('2d');
+  const matrix = SHAPES[type].shape;
+  c.width = 30; c.height = 30;
+  cx.fillStyle = color;
+  const offsetX = (c.width - matrix[0].length * scale) / 2;
+  const offsetY = (c.height - matrix.length * scale) / 2;
+  matrix.forEach((row, y) => {
+    row.forEach((val, x) => {
+      if (val) {
+        cx.fillRect(offsetX + x * scale, offsetY + y * scale, scale - 1, scale - 1);
+      }
+    });
+  });
+}
+drawLogoMino('logo-S', 'S', '#00ff00', 8);
+drawLogoMino('logo-L', 'L', '#ffa500', 8);
+drawLogoMino('logo-I', 'I', '#00ffff', 8);
+drawLogoMino('logo-T', 'T', '#800080', 8);
+
+// ----- ゲーム制御 -----
+function initStage() {
+  const stage = STAGES[currentStageIndex];
+  document.getElementById('riddle-title').innerText = `STAGE ${currentStageIndex + 1}`;
+  document.getElementById('riddle-text').innerText = stage.title;
+  
+  // 盤面初期化: 各セルに { color: 0, id: 0 }
+  board = Array.from({length: 20}, () => Array(10).fill(null).map(() => ({color: 0, id: 0})));
+  sequenceIndex = 0;
+  pieceCounter = 0;
+  dropCounter = 0;
+  gameOver = false;
+  
+  // 赤いエリア表示
+  const targetArea = document.getElementById('target-area');
+  const maxRow = Math.max(...stage.targetRows);
+  const minRow = Math.min(...stage.targetRows);
+  const rowsCount = maxRow - minRow + 1;
+  targetArea.style.display = 'block';
+  targetArea.style.height = `${rowsCount * BLOCK_SIZE}px`;
+  targetArea.style.bottom = `${(minRow - 1) * BLOCK_SIZE}px`;
+
+  hideMessage();
+  spawnPiece();
+
+  if (!isUpdating) {
+    lastTime = performance.now();
+    update();
+  }
+}
+
+function spawnPiece() {
+  if (sequenceIndex >= STAGES[currentStageIndex].sequence.length) {
+    checkWin();
+    return;
+  }
+  const type = STAGES[currentStageIndex].sequence[sequenceIndex++];
+  pieceCounter++;
+  currentPiece = {
+    type: type,
+    id: pieceCounter,
+    matrix: SHAPES[type].shape,
+    colorIndex: Object.keys(SHAPES).indexOf(type) + 1
+  };
+  currentX = Math.floor((10 - currentPiece.matrix[0].length) / 2);
+  currentY = 0;
+  
+  if (collide(board, currentPiece)) {
+    gameOver = true;
+    showMessage("失敗... 盤面が埋まってしまった。", false);
+  }
+  drawNext();
+}
+
+function drawNext() {
+  nextCtx.fillStyle = '#111';
+  nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+  const stage = STAGES[currentStageIndex];
+  
+  // ネクスト3枠分描画
+  for (let i = 0; i < 3; i++) {
+    const idx = sequenceIndex + i;
+    if (idx < stage.sequence.length) {
+      const nextType = stage.sequence[idx];
+      const matrix = SHAPES[nextType].shape;
+      const color = SHAPES[nextType].color;
+      const scale = 10;
+      
+      const offsetX = (nextCanvas.width - matrix[0].length * scale) / 2;
+      const offsetY = i * 60 + (60 - matrix.length * scale) / 2;
+      
+      nextCtx.fillStyle = color;
+      matrix.forEach((row, y) => {
+        row.forEach((value, x) => {
+          if (value) {
+            nextCtx.fillRect(offsetX + x * scale, offsetY + y * scale, scale - 1, scale - 1);
+          }
+        });
+      });
+    }
+  }
+}
+
+function collide(b, p) {
+  const m = p.matrix;
+  for (let y = 0; y < m.length; ++y) {
+    for (let x = 0; x < m[y].length; ++x) {
+      if (m[y][x] !== 0 && (b[y + currentY] && b[y + currentY][x + currentX].color) !== 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function merge(b, p) {
+  p.matrix.forEach((row, y) => {
+    row.forEach((value, x) => {
+      if (value !== 0) {
+        b[y + currentY][x + currentX] = { color: p.colorIndex, id: p.id };
+      }
+    });
+  });
+}
+
+function rotate(m) {
+  return m[0].map((val, index) => m.map(row => row[index]).reverse());
+}
+
+function playerRotate() {
+  if (gameOver) return;
+  const orig = currentPiece.matrix;
+  currentPiece.matrix = rotate(currentPiece.matrix);
+  if (collide(board, currentPiece)) currentPiece.matrix = orig;
+}
+
+function playerMove(dir) {
+  if (gameOver) return;
+  currentX += dir;
+  if (collide(board, currentPiece)) currentX -= dir;
+}
+
+function playerDrop() {
+  if (gameOver) return;
+  currentY++;
+  if (collide(board, currentPiece)) {
+    currentY--;
+    merge(board, currentPiece);
+    clearLines();
+    spawnPiece();
+  }
+  dropCounter = 0;
+}
+
+function hardDrop() {
+  if (gameOver) return;
+  while (!collide(board, currentPiece)) currentY++;
+  currentY--;
+  merge(board, currentPiece);
+  clearLines();
+  spawnPiece();
+  dropCounter = 0;
+}
+
+function clearLines() {
+  outer: for (let y = board.length - 1; y >= 0; --y) {
+    for (let x = 0; x < board[y].length; ++x) {
+      if (board[y][x].color === 0) continue outer;
+    }
+    const row = board.splice(y, 1)[0];
+    const newRow = Array.from({length: 10}, () => ({color: 0, id: 0}));
+    board.unshift(newRow);
+    ++y;
+  }
+}
+
+// ----- 固有IDごとのサイズ判定ロジック -----
+function getPieceStats(b) {
+  let pieces = {};
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 10; x++) {
+      let cell = b[y][x];
+      if (cell.id > 0) {
+        if (!pieces[cell.id]) {
+          pieces[cell.id] = { minX: x, maxX: x, minY: y, maxY: y, count: 0 };
+        }
+        let p = pieces[cell.id];
+        p.minX = Math.min(p.minX, x);
+        p.maxX = Math.max(p.maxX, x);
+        p.minY = Math.min(p.minY, y);
+        p.maxY = Math.max(p.maxY, y);
+        p.count++;
+      }
+    }
+  }
+  return Object.keys(pieces).map(id => {
+    let p = pieces[id];
+    return {
+      id: parseInt(id),
+      minX: p.minX,
+      width: p.maxX - p.minX + 1,
+      height: p.maxY - p.minY + 1
+    };
+  }).sort((a, b) => a.id - b.id); // 降ってきた順番でソート
+}
+
+function checkStage1(b) {
+  let stats = getPieceStats(b);
+  if (stats.length !== 2) return false;
+  return stats.every(p => p.width === 1 && p.height === 4);
+}
+
+function checkStage2(b) {
+  let stats = getPieceStats(b);
+  if (stats.length !== 3) return false;
+  // 設置順: 1:T, 2:J, 3:L
+  // T: 縦3横2, J: 横3縦2, L: 縦3横2
+  const pT = stats[0], pJ = stats[1], pL = stats[2];
+  const shapeCheck = (pT.width===2 && pT.height===3) &&
+                     (pJ.width===3 && pJ.height===2) &&
+                     (pL.width===2 && pL.height===3);
+  const orderCheck = (pT.minX < pJ.minX) && (pJ.minX < pL.minX);
+  return shapeCheck && orderCheck;
+}
+
+function checkStage3(b) {
+  let stats = getPieceStats(b);
+  if (stats.length !== 3) return false;
+  // 設置順: 1:T, 2:L, 3:J
+  // 全て縦3横2、かつ左から T -> L -> J の順
+  const pT = stats[0], pL = stats[1], pJ = stats[2];
+  const shapeCheck = stats.every(p => p.width === 2 && p.height === 3);
+  const orderCheck = (pT.minX < pL.minX) && (pL.minX < pJ.minX);
+  return shapeCheck && orderCheck;
+}
+
+function checkFinalStage(b) {
+  const targetPattern = [
+    [0,0,0,0,0,0,0,0,0,0],
+    [0,1,0,0,0,0,0,1,0,0],
+    [1,1,0,1,1,1,1,1,1,0],
+    [0,1,0,0,1,0,1,1,1,1]
+  ];
+  for (let i = 0; i < 16; i++) {
+    for (let j = 0; j < 10; j++) {
+      if (b[i][j].color !== 0) return false;
+    }
+  }
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 10; j++) {
+      let hasBlock = b[16+i][j].color !== 0;
+      let shouldHave = targetPattern[i][j] === 1;
+      if (hasBlock !== shouldHave) return false;
+    }
+  }
+  return true;
+}
+
+function checkWin() {
+  gameOver = true;
+  const stage = STAGES[currentStageIndex];
+  if (stage.check(board)) {
+    if (currentStageIndex === STAGES.length - 1) {
+      showMessage("🎉 全ステージクリア！おめでとう！", true);
+    } else {
+      showMessage("CLEAR! 次の謎へ...", true);
+    }
+  } else {
+    showMessage("形が違います... リセットしてやり直そう", false);
+  }
+}
+
+// ----- UI・描画 -----
+function showMessage(text, isClear) {
+  const win = document.getElementById('message-window');
+  const btn = document.getElementById('message-btn');
+  document.getElementById('message-text').innerText = text;
+  document.getElementById('message-text').style.color = isClear ? "#00ff00" : "#ff3333";
+  
+  if (isClear && currentStageIndex === STAGES.length - 1) {
+    btn.style.display = 'none';
+  } else {
+    btn.style.display = 'inline-block';
+    btn.innerText = isClear ? "次のステージへ" : "閉じる";
+    btn.onclick = () => {
+      if (isClear) {
+        currentStageIndex++;
+        initStage();
+      } else {
+        hideMessage();
+      }
+    };
+  }
+  win.style.display = 'block';
+}
+function hideMessage() {
+  document.getElementById('message-window').style.display = 'none';
+}
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  initStage();
+});
+
+function draw() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // 盤面描画
+  board.forEach((row, y) => {
+    row.forEach((cell, x) => {
+      if (cell.color !== 0) {
+        ctx.fillStyle = COLORS[cell.color];
+        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE-1, BLOCK_SIZE-1);
+      }
+    });
+  });
+
+  // 操作中のピース描画
+  if (currentPiece && !gameOver) {
+    ctx.fillStyle = COLORS[currentPiece.colorIndex];
+    currentPiece.matrix.forEach((row, y) => {
+      row.forEach((value, x) => {
+        if (value !== 0) {
+          ctx.fillRect((currentX + x) * BLOCK_SIZE, (currentY + y) * BLOCK_SIZE, BLOCK_SIZE-1, BLOCK_SIZE-1);
+        }
+      });
+    });
+  }
+}
+
+function update(time = 0) {
+  if (gameOver) {
+    draw();
+    isUpdating = false;
+    return;
+  }
+  isUpdating = true;
+  const deltaTime = time - lastTime;
+  lastTime = time;
+  dropCounter += deltaTime;
+
+  if (dropCounter > 1000) {
+    playerDrop();
+  }
+
+  draw();
+  requestAnimationFrame(update);
+}
+
+// ----- タッチ・キー操作 -----
+const bindTouch = (id, fn) => {
+  const el = document.getElementById(id);
+  el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); });
+  el.addEventListener('click', (e) => { fn(); });
+};
+
+bindTouch('btn-left', () => playerMove(-1));
+bindTouch('btn-right', () => playerMove(1));
+bindTouch('btn-rotate', () => playerRotate());
+bindTouch('btn-down', () => playerDrop());
+bindTouch('btn-drop', () => hardDrop());
+bindTouch('btn-reset', () => initStage());
+
+document.addEventListener('keydown', event => {
+  if (gameOver) return;
+  if (event.keyCode === 37) playerMove(-1);
+  else if (event.keyCode === 39) playerMove(1);
+  else if (event.keyCode === 40) playerDrop();
+  else if (event.keyCode === 38) playerRotate();
+  else if (event.keyCode === 32) hardDrop();
+});
+
+// ゲームスタート
+initStage();
+</script>
+</body>
+</html>
