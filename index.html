@@ -604,40 +604,34 @@ function checkStage5(b) {
 function checkStage6(b) {
   // 元々の仮パターン1
   const pLegacy1 = [
+    [0,0,0,0,0,0,0,0,0,0],
     [0,1,0,0,0,0,0,1,0,0],
     [1,1,0,1,1,1,1,1,1,0],
     [0,1,0,0,1,0,1,1,1,1]
   ];
   // 元々の仮パターン2
   const pLegacy2 = [
+    [0,0,0,0,0,0,0,0,0,0],
     [0,1,0,0,0,0,0,1,0,0],
     [1,1,0,1,1,1,1,1,1,0],
     [0,1,0,0,1,1,1,1,1,0]
   ];
-  // お客様が作成された大文字CUTの画像パターン1 (上段に削れなし)
+  // 画像から抽出した大文字CUTパターン1 (水色Iミノが左寄り)
   const pUser1 = [
-    [0,1,0,0,0,0,1,0,1,0],
-    [0,1,1,0,1,0,1,1,1,1],
-    [0,1,0,1,1,1,1,1,1,0] // 水色が左寄り
+    [0,0,0,0,0,0,0,0,1,0], 
+    [0,1,0,0,0,1,1,1,1,1], 
+    [1,1,0,1,1,0,1,1,0,1], 
+    [0,1,0,1,1,1,1,1,0,0]  
   ];
-  const pUser1_right = [
-    [0,1,0,0,0,0,1,0,1,0],
-    [0,1,1,0,1,0,1,1,1,1],
-    [0,1,0,1,1,0,1,1,1,1] // 水色が右寄り
-  ];
-  // お客様が作成された大文字CUTの画像パターン2 (上段の右側が削れている)
+  // 画像から抽出した大文字CUTパターン2 (水色Iミノが右寄り)
   const pUser2 = [
-    [0,1,0,0,0,0,0,0,0,0],
-    [0,1,1,0,1,0,1,1,1,1],
-    [0,1,0,1,1,1,1,1,1,0] // 水色が左寄り
-  ];
-  const pUser2_right = [
-    [0,1,0,0,0,0,0,0,0,0],
-    [0,1,1,0,1,0,1,1,1,1],
-    [0,1,0,1,1,0,1,1,1,1] // 水色が右寄り
+    [0,0,0,0,0,0,0,0,1,0], 
+    [0,1,0,0,0,0,1,1,1,1], 
+    [1,1,0,1,1,0,0,1,1,1], 
+    [0,1,0,1,0,1,1,1,1,0]  
   ];
   
-  const validPatterns = [pLegacy1, pLegacy2, pUser1, pUser1_right, pUser2, pUser2_right];
+  const validPatterns = [pLegacy1, pLegacy2, pUser1, pUser2];
   
   let minY = 20, maxY = -1;
   for (let y = 0; y < 20; y++) {
@@ -650,12 +644,14 @@ function checkStage6(b) {
   }
 
   if (maxY === -1) return false;
-  if (maxY - minY + 1 > 3) return false;
+  
+  // 4行分のパターンに対応
+  if (maxY - minY + 1 > 4) return false;
 
   for (let pattern of validPatterns) {
     let isMatch = true;
-    for (let i = 0; i < 3; i++) {
-      let boardY = maxY - 2 + i; 
+    for (let i = 0; i < 4; i++) {
+      let boardY = maxY - 3 + i; 
       for (let x = 0; x < 10; x++) {
         let hasBlock = (boardY >= 0 && boardY < 20) ? (b[boardY][x].color !== 0) : false;
         if (hasBlock !== (pattern[i][x] === 1)) {
@@ -665,7 +661,7 @@ function checkStage6(b) {
       }
       if (!isMatch) break;
     }
-    if (isMatch) return true; // どれか1つでも一致すれば正解
+    if (isMatch) return true;
   }
   
   return false;
