@@ -241,43 +241,122 @@ const SHAPES = {
 const COLORS = [null, '#00ffff', '#0000ff', '#ffa500', '#ffff00', '#00ff00', '#800080', '#ff0000'];
 
 // ==========================================
-// 💡 全体をみた上で同色エッジをカウントする究極ロジック
+// 💡 ステージ3・4専用：「コ」「ー」「ラ」の形を抽出して直接判定するロジック
+// ==========================================
+
+// 赤エリア内にある特定色のブロックの「形（2D配列）」と「左端のX座標」を抽出する関数
+function getShapeInArea(b, startY, endY, color) {
+  let minX = 10, maxX = -1, minY = 20, maxY = -1;
+  let found = false;
+  for (let y = startY; y <= endY; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (b[y][x].color === color) {
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+        found = true;
+      }
+    }
+  }
+  if (!found) return null; // その色のブロックが存在しない
+
+  // バウンディングボックス内で 0 と 1 の形を生成
+  let shape = [];
+  for (let y = minY; y <= maxY; y++) {
+    let row = [];
+    for (let x = minX; x <= maxX; x++) {
+      row.push(b[y][x].color === color ? 1 : 0);
+    }
+    shape.push(row);
+  }
+  return { shape, minX };
+}
+
+// 抽出した形が、正解のパターンと一致しているか確認する関数
+function checkMatchShape(shape, patterns) {
+  if (!shape) return false;
+  for (let p of patterns) {
+    if (shape.length !== p.length) continue;
+    if (shape[0].length !== p[0].length) continue;
+    let match = true;
+    for (let y = 0; y < shape.length; y++) {
+      for (let x = 0; x < shape[y].length; x++) {
+        if (shape[y][x] !== p[y][x]) {
+          match = false;
+          break;
+        }
+      }
+      if (!match) break;
+    }
+    if (match) return true;
+  }
+  return false;
+}
+
+function checkColaStage(b, targetRows) {
+  let sY = Math.min(...targetRows);
+  let eY = Math.max(...targetRows);
+  
+  // T(紫:6), J(青:2), L(橙:3) の形をそれぞれ抽出
+  let tObj = getShapeInArea(b, sY, eY, 6);
+  let jObj = getShapeInArea(b, sY, eY, 2);
+  let lObj = getShapeInArea(b, sY, eY, 3);
+  
+  if (!tObj || !jObj || !lObj) return false;
+  
+  // お客様のご指定ルールに完全準拠した正解パターン
+  // Tは「コ」：横2縦1（縦は右） -> 下段が横2、右列が縦2
+  let tMatch = checkMatchShape(tObj.shape, [
+    [[0, 1], 
+     [1, 1]]
+  ]);
+
+  // Jは「ー」：横1
+  let jMatch = checkMatchShape(jObj.shape, [
+    [[1]]
+  ]);
+
+  // Lは「ラ」：横2縦1（縦は右）で下にある方と縦1が接している -> 上段が横2、右列が縦2
+  let lMatch = checkMatchShape(lObj.shape, [
+    [[1, 1], 
+     [0, 1]]
+  ]);
+  
+  if (!tMatch || !jMatch || !lMatch) return false;
+  
+  // 左から T, J, L の順に存在する
+  if (!(tObj.minX < jObj.minX && jObj.minX < lObj.minX)) return false;
+  
+  return true; // 全条件クリア！
+}
+
+// ==========================================
+// 💡 ステージ5〜EX用：全体エッジカウント判定
 // ==========================================
 function countColorEdges(b, startY, endY, color, maxX = 9) {
   let v = 0; 
-  let vXSum = 0;
-  // 縦エッジ (左右の隣接)
   for (let y = startY; y <= endY; y++) {
     for (let x = 0; x < maxX; x++) {
       if (b[y][x].color === color && b[y][x+1].color === color) {
         v++;
-        vXSum += x;
       }
     }
   }
 
   let h = 0; 
-  let hXSum = 0;
-  // 横エッジ (上下の隣接。全体を見て赤エリアの境界を跨ぐものもカウント)
   for (let y = startY; y <= endY + 1; y++) {
     for (let x = 0; x <= maxX; x++) {
       let c1 = (y - 1 >= 0) ? b[y-1][x].color : 0;
       let c2 = (y < 20) ? b[y][x].color : 0;
       if (c1 === color && c2 === color) {
         h++;
-        hXSum += x;
       }
     }
   }
-  
-  // エッジの平均X座標 (vBarsはブロック間のため+0.5が実際の中心)
-  let vX = v > 0 ? vXSum / v : -1;
-  let hX = h > 0 ? hXSum / h : -1;
-
-  return { v, h, vX, hX };
+  return { v, h };
 }
 
-// 順序判定用: 指定された色の最小X座標を取得
 function getMinX(b, startY, endY, color) {
   let minX = 10;
   for (let y = startY; y <= endY; y++) {
@@ -320,37 +399,6 @@ function checkStage2(b) {
   if (xs.size !== 2) return false;
   let arr = Array.from(xs);
   return Math.abs(arr[0] - arr[1]) === 1; 
-}
-
-// 💡 お客様のご指示を完全翻訳した、ステージ3・4の専用判定
-function checkColaStage(b, targetRows) {
-  let sY = Math.min(...targetRows);
-  let eY = Math.max(...targetRows);
-  
-  let eT = countColorEdges(b, sY, eY, 6); // T(紫)
-  let eJ = countColorEdges(b, sY, eY, 2); // J(青)
-  let eL = countColorEdges(b, sY, eY, 3); // L(橙)
-
-  // ① Tの色 横2縦1（縦は必ず横よりも右）
-  if (eT.h !== 2 || eT.v !== 1) return false;
-  // 縦(vBars)の実際の位置(vX + 0.5)が、横(hBars)より右側にあるかを判定
-  if (eT.vX + 0.5 < eT.hX) return false;
-
-  // ② Jの色 横1
-  if (eJ.h !== 1 || eJ.v !== 0) return false;
-
-  // ③ Lの色 横2縦1（縦は必ず横よりも右）
-  if (eL.h !== 2 || eL.v !== 1) return false;
-  if (eL.vX + 0.5 < eL.hX) return false;
-
-  // かつ左から①②③の順に存在する
-  let minX_T = getMinX(b, sY, eY, 6);
-  let minX_J = getMinX(b, sY, eY, 2);
-  let minX_L = getMinX(b, sY, eY, 3);
-
-  if (minX_T >= minX_J || minX_J >= minX_L) return false;
-
-  return true; // 全条件クリア！
 }
 
 function checkStage5(b) {
