@@ -335,7 +335,6 @@ function initStage(stageIndex) {
   
   targetArea.style.display = 'block';
   targetArea.style.bottom = 'auto';
-  
   targetArea.style.top = `${(20 - maxRow) * BLOCK_SIZE + 1}px`;
   targetArea.style.height = `${rowsCount * BLOCK_SIZE + 3}px`;
 
@@ -476,6 +475,10 @@ function clearLines() {
   }
 }
 
+// ----------------------------------------------------
+// 汎用判定ロジック群 (相対位置判定 & シルエット判定)
+// ----------------------------------------------------
+
 function getPieceStats(b) {
   let pieces = {};
   for (let y = 0; y < 20; y++) {
@@ -520,6 +523,59 @@ function countBlocksInArea(b, pieceId, yStart, yEnd) {
     return count;
 }
 
+// 【最強の汎用判定】盤面のブロック群の形だけを切り出す（バウンディングボックス抽出）
+function extractSilhouette(b) {
+  let minX = 10, maxX = -1, minY = 20, maxY = -1;
+  for (let y = 0; y < 20; y++) {
+    for (let x = 0; x < 10; x++) {
+      if (b[y][x].color !== 0) {
+        minX = Math.min(minX, x);
+        maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  if (maxX === -1) return null; // ブロックなし
+  
+  let silhouette = [];
+  for (let y = minY; y <= maxY; y++) {
+    let row = [];
+    for (let x = minX; x <= maxX; x++) {
+      row.push(b[y][x].color !== 0 ? 1 : 0);
+    }
+    silhouette.push(row);
+  }
+  return silhouette;
+}
+
+// 抽出したシルエットが、指定された正解パターンのどれかと一致するかチェックする
+function checkMatch(extracted, targetPatterns) {
+  if (!extracted) return false;
+  for (let pattern of targetPatterns) {
+    // 幅と高さが一致しなければスキップ
+    if (extracted.length !== pattern.length) continue;
+    if (extracted[0].length !== pattern[0].length) continue;
+    
+    let isMatch = true;
+    for (let y = 0; y < extracted.length; y++) {
+      for (let x = 0; x < extracted[y].length; x++) {
+        if (extracted[y][x] !== pattern[y][x]) {
+          isMatch = false;
+          break;
+        }
+      }
+      if (!isMatch) break;
+    }
+    if (isMatch) return true;
+  }
+  return false;
+}
+
+// ----------------------------------------------------
+// 各ステージの判定
+// ----------------------------------------------------
+
 function checkStage1(b) {
   let stats = getPieceStats(b);
   if (stats.length !== 2) return false;
@@ -561,16 +617,15 @@ function checkColaStage(b, targetRows) {
   let jCount = countBlocksInArea(b, pJ.id, startY, endY);
   let lCount = countBlocksInArea(b, pL.id, startY, endY);
 
-  if (startY === 17) {
+  if (startY === 17) { // Stage 3
       if (jCount !== 1) return false;
       if (lCount !== 2 && lCount !== 3) return false;
-  } else {
+  } else { // Stage 4
       if (jCount !== 1 && jCount !== 4) return false;
       if (lCount !== 3) return false;
   }
 
   if (!(pT.minX < pJ.minX && pJ.minX < pL.minX)) return false;
-
   return true;
 }
 
@@ -579,7 +634,6 @@ function checkStage4(b) { return checkColaStage(b, [1, 2]); }
 
 function checkStage5(b) {
   let stats = getPieceStats(b);
-  
   let tPieces = stats.filter(p => p.color === 6);
   let oPieces = stats.filter(p => p.color === 4);
   
@@ -592,8 +646,10 @@ function checkStage5(b) {
 
   let oPiece = oPieces[0];
 
+  // 並び順
   if (!(tVert.minX < tHorz.minX && tHorz.minX < oPiece.minX)) return false;
 
+  // 赤エリア (Y=17, 18) のマス数
   if (countBlocksInArea(b, tVert.id, 17, 18) !== 3) return false;
   if (countBlocksInArea(b, tHorz.id, 17, 18) !== 3) return false;
   if (countBlocksInArea(b, oPiece.id, 17, 18) !== 4) return false;
@@ -602,69 +658,23 @@ function checkStage5(b) {
 }
 
 function checkStage6(b) {
-  // 元々の仮パターン1
-  const pLegacy1 = [
-    [0,0,0,0,0,0,0,0,0,0],
+  const extracted = extractSilhouette(b);
+  
+  // プレイヤーが作った形が余白ゼロで切り抜かれた状態のものと比較します。
+  // パターン1: Iミノがぴったり配置されている形
+  const p1_cropped = [
     [0,1,0,0,0,0,0,1,0,0],
     [1,1,0,1,1,1,1,1,1,0],
     [0,1,0,0,1,0,1,1,1,1]
   ];
-  // 元々の仮パターン2
-  const pLegacy2 = [
-    [0,0,0,0,0,0,0,0,0,0],
-    [0,1,0,0,0,0,0,1,0,0],
-    [1,1,0,1,1,1,1,1,1,0],
-    [0,1,0,0,1,1,1,1,1,0]
+  // パターン2: Iミノが右に1マスずれている形
+  const p2_cropped = [
+    [0,1,0,0,0,0,0,1,0],
+    [1,1,0,1,1,1,1,1,1],
+    [0,1,0,0,1,1,1,1,1]
   ];
-  // 画像から抽出した大文字CUTパターン1 (水色Iミノが左寄り)
-  const pUser1 = [
-    [0,0,0,0,0,0,0,0,1,0], 
-    [0,1,0,0,0,1,1,1,1,1], 
-    [1,1,0,1,1,0,1,1,0,1], 
-    [0,1,0,1,1,1,1,1,0,0]  
-  ];
-  // 画像から抽出した大文字CUTパターン2 (水色Iミノが右寄り)
-  const pUser2 = [
-    [0,0,0,0,0,0,0,0,1,0], 
-    [0,1,0,0,0,0,1,1,1,1], 
-    [1,1,0,1,1,0,0,1,1,1], 
-    [0,1,0,1,0,1,1,1,1,0]  
-  ];
-  
-  const validPatterns = [pLegacy1, pLegacy2, pUser1, pUser2];
-  
-  let minY = 20, maxY = -1;
-  for (let y = 0; y < 20; y++) {
-    for (let x = 0; x < 10; x++) {
-      if (b[y][x].color !== 0) {
-        minY = Math.min(minY, y);
-        maxY = Math.max(maxY, y);
-      }
-    }
-  }
 
-  if (maxY === -1) return false;
-  
-  // 4行分のパターンに対応
-  if (maxY - minY + 1 > 4) return false;
-
-  for (let pattern of validPatterns) {
-    let isMatch = true;
-    for (let i = 0; i < 4; i++) {
-      let boardY = maxY - 3 + i; 
-      for (let x = 0; x < 10; x++) {
-        let hasBlock = (boardY >= 0 && boardY < 20) ? (b[boardY][x].color !== 0) : false;
-        if (hasBlock !== (pattern[i][x] === 1)) {
-          isMatch = false;
-          break;
-        }
-      }
-      if (!isMatch) break;
-    }
-    if (isMatch) return true;
-  }
-  
-  return false;
+  return checkMatch(extracted, [p1_cropped, p2_cropped]);
 }
 
 function checkWin() {
