@@ -326,7 +326,7 @@ function getPieceStats(b) {
   }));
 }
 
-function checkColaStage(b, stageDef) {
+function checkColaStage(b, stageDef, targetCounts) {
   let stats = getPieceStats(b);
   if (stats.length !== 3) return false;
   
@@ -343,10 +343,10 @@ function checkColaStage(b, stageDef) {
     }
   }
 
-  // Jミノが赤エリアに1マス
-  if (redCount['J'] !== 1) return false;
-  // Lミノが赤エリアに3マス
-  if (redCount['L'] !== 3) return false;
+  // 各ミノが指定されたマス数だけ赤エリアに入っているかチェック
+  if (redCount['T'] !== targetCounts['T']) return false;
+  if (redCount['J'] !== targetCounts['J']) return false;
+  if (redCount['L'] !== targetCounts['L']) return false;
   
   // 赤エリア内で T -> J -> L の順番に並んでいること
   if (!(redMinX['T'] < redMinX['J'] && redMinX['J'] < redMinX['L'])) return false;
@@ -387,13 +387,13 @@ const STAGES = [
     title: "コーラを作ろう！",
     sequence: ['T', 'J', 'L'],
     targetRows: [17, 18], // 下から2,3段目
-    check: (b, stageDef) => checkColaStage(b, stageDef)
+    check: (b, stageDef) => checkColaStage(b, stageDef, { 'T': 3, 'J': 1, 'L': 2 })
   },
   {
     title: "コーラを作ろう！！",
     sequence: ['T', 'L', 'J'],
     targetRows: [18, 19], // 下から1,2段目
-    check: (b, stageDef) => checkColaStage(b, stageDef)
+    check: (b, stageDef) => checkColaStage(b, stageDef, { 'T': 3, 'J': 4, 'L': 3 })
   },
   {
     title: "カットを作ろう！",
