@@ -249,11 +249,8 @@ const SHAPES = {
 };
 const COLORS = [null, '#00ffff', '#0000ff', '#ffa500', '#ffff00', '#00ff00', '#800080', '#ff0000'];
 
-// ==========================================
-// 💡 全体をみた上で各段のエッジをカウントするエンジン
-// ==========================================
 function countEdges(b, startY, endY, color, maxX = 9) {
-  let v = []; // 縦エッジ
+  let v = []; 
   for (let y = startY; y <= endY; y++) {
     for (let x = 0; x < maxX; x++) {
       if (b[y][x].color === color && b[y][x+1].color === color) {
@@ -262,7 +259,7 @@ function countEdges(b, startY, endY, color, maxX = 9) {
     }
   }
 
-  let h = []; // 横エッジ
+  let h = []; 
   for (let y = startY; y <= endY + 1; y++) {
     for (let x = 0; x <= (maxX === 8 ? 8 : 9); x++) {
       let c1 = (y - 1 >= 0) ? b[y-1][x].color : 0;
@@ -274,10 +271,6 @@ function countEdges(b, startY, endY, color, maxX = 9) {
   }
   return { v, h };
 }
-
-// ------------------------------------------
-// 🧩 各ステージの判定ロジック
-// ------------------------------------------
 
 function checkColaStage(b, targetRows) {
   let sY = Math.min(...targetRows);
@@ -462,6 +455,7 @@ const STAGES = [
     sequence: ['S', 'S', 'J', 'L', 'J', 'L', 'J', 'J', 'L', 'T', 'I', 'S', 'J'],
     targetRows: [2, 3], 
     targetColors: [1, 2, 3, 5, 6],
+    maxX: 8, // ★EXステージ用の右1列除外設定を追加！
     check: (b) => checkStageEX(b)
   }
 ];
@@ -480,7 +474,7 @@ let lastTime = 0;
 let gameOver = false;
 let isUpdating = false;
 let currentStageIndex = 0;
-let isStageCleared = false; // 新規追加: クリア状態の保持用
+let isStageCleared = false; 
 
 function drawLogoMino(id, type, color, scale) {
   const c = document.getElementById(id);
@@ -759,7 +753,6 @@ function draw(time = 0) {
     });
   }
 
-  // ★ カウントされたスリット（エッジ）を光らせるアニメーション処理
   if (isStageCleared) {
     const stage = STAGES[currentStageIndex];
     const sY = 20 - Math.max(...stage.targetRows);
@@ -768,7 +761,6 @@ function draw(time = 0) {
     const maxX = stage.maxX !== undefined ? stage.maxX : 9;
 
     ctx.save();
-    // 0.5秒周期で鼓動のように光るパルス効果
     const alpha = 0.5 + 0.5 * Math.sin(time / 150);
     ctx.strokeStyle = `rgba(255, 255, 100, ${alpha})`;
     ctx.shadowBlur = 15;
@@ -780,7 +772,6 @@ function draw(time = 0) {
     for (let color of colors) {
       let edges = countEdges(board, sY, eY, color, maxX);
       
-      // 縦エッジ (左右のブロック境界) を描画
       for (let edge of edges.v) {
         let px = (edge.x + 0.5) * BLOCK_SIZE; 
         let py1 = edge.y * BLOCK_SIZE + 3;
@@ -789,7 +780,6 @@ function draw(time = 0) {
         ctx.lineTo(px, py2);
       }
 
-      // 横エッジ (上下のブロック境界) を描画
       for (let edge of edges.h) {
         let px1 = edge.x * BLOCK_SIZE + 3;
         let px2 = (edge.x + 1) * BLOCK_SIZE - 3;
@@ -818,7 +808,6 @@ function update(time = 0) {
 
   draw(time);
 
-  // ゲームオーバーでもステージクリア時はアニメーションのためにループを続行
   if (!gameOver || isStageCleared) {
     requestAnimationFrame(update);
   } else {
