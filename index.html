@@ -249,8 +249,11 @@ const SHAPES = {
 };
 const COLORS = [null, '#00ffff', '#0000ff', '#ffa500', '#ffff00', '#00ff00', '#800080', '#ff0000'];
 
+// ==========================================
+// 💡 全体をみた上で各段のエッジをカウントするエンジン
+// ==========================================
 function countEdges(b, startY, endY, color, maxX = 9) {
-  let v = []; 
+  let v = []; // 縦エッジ
   for (let y = startY; y <= endY; y++) {
     for (let x = 0; x < maxX; x++) {
       if (b[y][x].color === color && b[y][x+1].color === color) {
@@ -259,7 +262,7 @@ function countEdges(b, startY, endY, color, maxX = 9) {
     }
   }
 
-  let h = []; 
+  let h = []; // 横エッジ
   for (let y = startY; y <= endY + 1; y++) {
     for (let x = 0; x <= (maxX === 8 ? 8 : 9); x++) {
       let c1 = (y - 1 >= 0) ? b[y-1][x].color : 0;
@@ -271,6 +274,10 @@ function countEdges(b, startY, endY, color, maxX = 9) {
   }
   return { v, h };
 }
+
+// ------------------------------------------
+// 🧩 各ステージの判定ロジック
+// ------------------------------------------
 
 function checkColaStage(b, targetRows) {
   let sY = Math.min(...targetRows);
@@ -412,42 +419,49 @@ const STAGES = [
     title: "ミミを作ろう！",
     sequence: ['I', 'I'],
     targetRows: [2, 3],
+    targetColors: [1],
     check: (b) => checkStage1(b)
   },
   {
     title: "オウを作ろう！",
     sequence: ['I', 'I'],
     targetRows: [2, 3],
+    targetColors: [1],
     check: (b) => checkStage2(b)
   },
   {
     title: "コーラを作ろう！",
     sequence: ['T', 'J', 'L'],
     targetRows: [2, 3],
+    targetColors: [6, 2, 3],
     check: (b) => checkColaStage(b, [2, 3])
   },
   {
     title: "コーラを作ろう！！",
     sequence: ['T', 'L', 'J'],
     targetRows: [1, 2],
+    targetColors: [6, 3, 2],
     check: (b) => checkColaStage(b, [1, 2])
   },
   {
     title: "カットを作ろう！",
     sequence: ['I', 'I', 'O', 'T', 'T'],
     targetRows: [2, 3],
+    targetColors: [6, 4],
     check: (b) => checkStage5(b)
   },
   {
     title: "カットを大文字で作ろう！",
     sequence: ['I', 'I', 'Z', 'O', 'T', 'T'],
     targetRows: [1, 2],
+    targetColors: [6, 4, 7],
     check: (b) => checkStage6(b)
   },
   {
     title: "切ルを作ろう！",
     sequence: ['S', 'S', 'J', 'L', 'J', 'L', 'J', 'J', 'L', 'T', 'I', 'S', 'J'],
     targetRows: [2, 3], 
+    targetColors: [1, 2, 3, 5, 6],
     check: (b) => checkStageEX(b)
   }
 ];
@@ -466,6 +480,7 @@ let lastTime = 0;
 let gameOver = false;
 let isUpdating = false;
 let currentStageIndex = 0;
+let isStageCleared = false; // 新規追加: クリア状態の保持用
 
 function drawLogoMino(id, type, color, scale) {
   const c = document.getElementById(id);
@@ -491,6 +506,7 @@ drawLogoMino('logo-T', 'T', '#800080', 8);
 function initStage(stageIndex) {
   currentStageIndex = stageIndex;
   const stage = STAGES[currentStageIndex];
+  isStageCleared = false;
   
   if (currentStageIndex === STAGES.length - 1) {
     document.getElementById('riddle-title').innerText = `EX STAGE`;
@@ -528,7 +544,7 @@ function initStage(stageIndex) {
 
   if (!isUpdating) {
     lastTime = performance.now();
-    update();
+    update(lastTime);
   }
 }
 
@@ -664,16 +680,17 @@ function checkWin() {
   gameOver = true;
   const stage = STAGES[currentStageIndex];
   if (stage.check(board)) {
+    isStageCleared = true;
     if (currentStageIndex === STAGES.length - 1) {
       showMessage("🎉 全ての謎が解けました！", true);
     } else if (currentStageIndex === 5) {
-      // ステージ6クリア時の指定メッセージ
       let msg = `clear!<br><br><span style="font-size:12px; font-weight:normal; display:inline-block; margin-top:8px;">EXステージもありますが、どう論理的に解くのかpiaにもわからないものになっています。<br>答えボタンもあるので、少し考えて無理だったら見てください。</span>`;
       showMessage(msg, true);
     } else {
       showMessage("CLEAR!", true);
     }
   } else {
+    isStageCleared = false;
     showMessage("何かが違うようです…", false);
   }
 }
@@ -705,7 +722,7 @@ function hideMessage() {
   document.getElementById('message-window').style.display = 'none';
 }
 
-function draw() {
+function draw(time = 0) {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
@@ -741,25 +758,72 @@ function draw() {
       });
     });
   }
+
+  // ★ カウントされたスリット（エッジ）を光らせるアニメーション処理
+  if (isStageCleared) {
+    const stage = STAGES[currentStageIndex];
+    const sY = 20 - Math.max(...stage.targetRows);
+    const eY = 20 - Math.min(...stage.targetRows);
+    const colors = stage.targetColors;
+    const maxX = stage.maxX !== undefined ? stage.maxX : 9;
+
+    ctx.save();
+    // 0.5秒周期で鼓動のように光るパルス効果
+    const alpha = 0.5 + 0.5 * Math.sin(time / 150);
+    ctx.strokeStyle = `rgba(255, 255, 100, ${alpha})`;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#ffff00';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+
+    for (let color of colors) {
+      let edges = countEdges(board, sY, eY, color, maxX);
+      
+      // 縦エッジ (左右のブロック境界) を描画
+      for (let edge of edges.v) {
+        let px = (edge.x + 0.5) * BLOCK_SIZE; 
+        let py1 = edge.y * BLOCK_SIZE + 3;
+        let py2 = (edge.y + 1) * BLOCK_SIZE - 3;
+        ctx.moveTo(px, py1);
+        ctx.lineTo(px, py2);
+      }
+
+      // 横エッジ (上下のブロック境界) を描画
+      for (let edge of edges.h) {
+        let px1 = edge.x * BLOCK_SIZE + 3;
+        let px2 = (edge.x + 1) * BLOCK_SIZE - 3;
+        let py = (edge.y + 0.5) * BLOCK_SIZE; 
+        ctx.moveTo(px1, py);
+        ctx.lineTo(px2, py);
+      }
+    }
+
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function update(time = 0) {
-  if (gameOver) {
-    draw();
-    isUpdating = false;
-    return;
-  }
   isUpdating = true;
   const deltaTime = time - lastTime;
   lastTime = time;
-  dropCounter += deltaTime;
 
-  if (dropCounter > 1000) {
-    playerDrop();
+  if (!gameOver) {
+    dropCounter += deltaTime;
+    if (dropCounter > 1000) {
+      playerDrop();
+    }
   }
 
-  draw();
-  requestAnimationFrame(update);
+  draw(time);
+
+  // ゲームオーバーでもステージクリア時はアニメーションのためにループを続行
+  if (!gameOver || isStageCleared) {
+    requestAnimationFrame(update);
+  } else {
+    isUpdating = false;
+  }
 }
 
 const bindTouch = (id, fn) => {
