@@ -455,7 +455,7 @@ const STAGES = [
     sequence: ['S', 'S', 'J', 'L', 'J', 'L', 'J', 'J', 'L', 'T', 'I', 'S', 'J'],
     targetRows: [2, 3], 
     targetColors: [1, 2, 3, 5, 6],
-    maxX: 8, // ★EXステージ用の右1列除外設定を追加！
+    maxX: 8,
     check: (b) => checkStageEX(b)
   }
 ];
@@ -753,6 +753,7 @@ function draw(time = 0) {
     });
   }
 
+  // ★ クリア時は黄色く光る
   if (isStageCleared) {
     const stage = STAGES[currentStageIndex];
     const sY = 20 - Math.max(...stage.targetRows);
@@ -771,7 +772,6 @@ function draw(time = 0) {
 
     for (let color of colors) {
       let edges = countEdges(board, sY, eY, color, maxX);
-      
       for (let edge of edges.v) {
         let px = (edge.x + 0.5) * BLOCK_SIZE; 
         let py1 = edge.y * BLOCK_SIZE + 3;
@@ -779,7 +779,6 @@ function draw(time = 0) {
         ctx.moveTo(px, py1);
         ctx.lineTo(px, py2);
       }
-
       for (let edge of edges.h) {
         let px1 = edge.x * BLOCK_SIZE + 3;
         let px2 = (edge.x + 1) * BLOCK_SIZE - 3;
@@ -788,7 +787,44 @@ function draw(time = 0) {
         ctx.lineTo(px2, py);
       }
     }
+    ctx.stroke();
+    ctx.restore();
+  } 
+  // ★ 不正解時は暗い赤色で点滅する
+  else if (gameOver && !isStageCleared) {
+    const stage = STAGES[currentStageIndex];
+    const sY = 20 - Math.max(...stage.targetRows);
+    const eY = 20 - Math.min(...stage.targetRows);
+    const maxX = stage.maxX !== undefined ? stage.maxX : 9;
 
+    ctx.save();
+    // 鼓動のように光るパルス効果 (暗い赤)
+    const alpha = 0.4 + 0.4 * Math.sin(time / 150);
+    ctx.strokeStyle = `rgba(200, 0, 0, ${alpha})`;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#ff0000';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+
+    // すべての色(1~7)についてエッジをカウントして描画
+    for (let color = 1; color <= 7; color++) {
+      let edges = countEdges(board, sY, eY, color, maxX);
+      for (let edge of edges.v) {
+        let px = (edge.x + 0.5) * BLOCK_SIZE; 
+        let py1 = edge.y * BLOCK_SIZE + 3;
+        let py2 = (edge.y + 1) * BLOCK_SIZE - 3;
+        ctx.moveTo(px, py1);
+        ctx.lineTo(px, py2);
+      }
+      for (let edge of edges.h) {
+        let px1 = edge.x * BLOCK_SIZE + 3;
+        let px2 = (edge.x + 1) * BLOCK_SIZE - 3;
+        let py = (edge.y + 0.5) * BLOCK_SIZE; 
+        ctx.moveTo(px1, py);
+        ctx.lineTo(px2, py);
+      }
+    }
     ctx.stroke();
     ctx.restore();
   }
@@ -808,11 +844,8 @@ function update(time = 0) {
 
   draw(time);
 
-  if (!gameOver || isStageCleared) {
-    requestAnimationFrame(update);
-  } else {
-    isUpdating = false;
-  }
+  // 不正解時の点滅アニメーションのため、ゲームオーバー時もループを継続
+  requestAnimationFrame(update);
 }
 
 const bindTouch = (id, fn) => {
